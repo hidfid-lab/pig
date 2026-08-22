@@ -26,7 +26,7 @@
         let selectedCategory = '貼圖';
         let allProducts = [];
         let canvas, ctx, isDrawing = false, originalImage = null;
-        let drawHistory = []; // 儲存畫布歷史步驟供 Undo 使用
+        let drawHistory = [];
         let currentKeyword = '';
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -47,16 +47,17 @@
 
         // 頁面切換控制
         window.switchTab = function(tabName) {
-            document.getElementById('view-market').classList.add('hidden');
-            document.getElementById('view-upload').classList.add('hidden');
-            document.getElementById('view-chat').classList.add('hidden');
+            ['market', 'upload', 'chat', 'coin', 'profile'].forEach(t => {
+                const el = document.getElementById(`view-${t}`);
+                if (el) el.classList.add('hidden');
+            });
 
-            if (tabName === 'market') {
-                document.getElementById('view-market').classList.remove('hidden');
-            } else if (tabName === 'upload') {
-                document.getElementById('view-upload').classList.remove('hidden');
-            } else if (tabName === 'chat') {
-                document.getElementById('view-chat').classList.remove('hidden');
+            const target = document.getElementById(`view-${tabName}`);
+            if (target) target.classList.remove('hidden');
+
+            // 如果切換到「我的」，重新渲染個人上架商品列表
+            if (tabName === 'profile') {
+                renderMyProducts();
             }
         };
 
@@ -73,9 +74,9 @@
                 const btn = document.getElementById(`cat-${c}`);
                 if (btn) {
                     if (c === cat) {
-                        btn.className = "flex-1 py-2 bg-orange-500 text-white rounded font-medium transition";
+                        btn.className = "py-2.5 bg-orange-500 text-white rounded-xl font-medium text-sm transition shadow-sm";
                     } else {
-                        btn.className = "flex-1 py-2 bg-gray-100 text-gray-700 rounded font-medium hover:bg-gray-200 transition";
+                        btn.className = "py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition";
                     }
                 }
             });
@@ -109,7 +110,7 @@
 
         window.undoCanvas = function() {
             if (drawHistory.length > 1) {
-                drawHistory.pop(); // 移除當前狀態
+                drawHistory.pop();
                 const previousState = drawHistory[drawHistory.length - 1];
                 ctx.putImageData(previousState, 0, 0);
             } else if (drawHistory.length === 1) {
@@ -266,6 +267,31 @@
             `).join('');
         }
 
+        function renderMyProducts() {
+            const container = document.getElementById('my-product-list');
+            if (allProducts.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-8">目前尚無上架紀錄</div>`;
+                return;
+            }
+
+            container.innerHTML = allProducts.map(p => `
+                <div class="bg-white rounded-xl shadow-sm border p-4 flex flex-col justify-between">
+                    <div>
+                        <img src="${p.maskedImage}" alt="${p.name}" class="w-full h-32 object-cover rounded-lg mb-2">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded">${p.category}</span>
+                            <span class="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">${p.status === 'pending' ? '審核中' : '上架中'}</span>
+                        </div>
+                        <h3 class="font-bold text-base text-gray-800">${p.name}</h3>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between pt-2 border-t">
+                        <span class="text-red-500 font-bold">NT$ ${p.price}</span>
+                        <button onclick="openDetailModal('${p.id}')" class="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200">查看</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         window.openDetailModal = function(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
@@ -283,7 +309,7 @@
         };
     </script>
 </head>
-<body class="bg-gray-100 min-h-screen pb-16">
+<body class="bg-gray-100 min-h-screen pb-20">
 
     <!-- 頂部導航列 -->
     <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex items-center justify-between gap-3 max-w-4xl mx-auto">
@@ -301,13 +327,11 @@
 
         <!-- 1. 市集瀏覽分頁 -->
         <div id="view-market" class="space-y-4">
-            <!-- 公告橫幅 -->
             <div class="bg-gradient-to-r from-teal-400 to-teal-500 text-white p-5 rounded-2xl shadow">
                 <h2 class="text-center font-bold text-lg mb-1">小 豬 公 告</h2>
                 <p class="text-xs text-center text-teal-100">請經常在小豬市集交易的豬友們，點擊本公告閱讀管理規範，以保護自身權益。</p>
             </div>
 
-            <!-- 四大通路切換按鈕 -->
             <div class="grid grid-cols-4 gap-2">
                 <button type="button" id="cat-貼圖" onclick="setCategory('貼圖')" class="py-2.5 bg-orange-500 text-white rounded-xl font-medium text-sm transition shadow-sm">貼圖</button>
                 <button type="button" id="cat-遊戲" onclick="setCategory('遊戲')" class="py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition">遊戲</button>
@@ -315,12 +339,9 @@
                 <button type="button" id="cat-其它" onclick="setCategory('其它')" class="py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition">其它</button>
             </div>
 
-            <!-- 商品展示牆 -->
             <div class="bg-white p-4 rounded-2xl shadow-sm">
                 <h3 class="font-bold text-gray-800 mb-3">商品展示牆</h3>
-                <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    <!-- 動態載入商品 -->
-                </div>
+                <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
             </div>
         </div>
 
@@ -386,21 +407,64 @@
             </div>
         </div>
 
+        <!-- 4. 豬幣分頁 -->
+        <div id="view-coin" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
+            <h2 class="text-lg font-bold text-gray-800 border-b pb-3">我的豬幣錢包</h2>
+            <div class="bg-gradient-to-r from-orange-400 to-orange-500 text-white p-6 rounded-2xl shadow flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-orange-100">可用豬幣餘額</p>
+                    <p class="text-3xl font-bold mt-1">1,280 <span class="text-sm font-normal">P</span></p>
+                </div>
+                <button onclick="alert('充值功能開發中！')" class="bg-white text-orange-600 px-4 py-2 rounded-xl font-bold text-sm shadow hover:bg-orange-50 transition">充值 / 兌換</button>
+            </div>
+            <div class="space-y-2 pt-2">
+                <h3 class="font-bold text-sm text-gray-600">近期點數異動紀錄</h3>
+                <div class="bg-gray-50 p-3 rounded-xl flex justify-between items-center text-sm">
+                    <span class="text-gray-700">商品售出收入</span>
+                    <span class="text-green-600 font-bold">+ 350 P</span>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-xl flex justify-between items-center text-sm">
+                    <span class="text-gray-700">市集手續費扣除</span>
+                    <span class="text-red-500 font-bold">- 15 P</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. 我的分頁 -->
+        <div id="view-profile" class="hidden space-y-4">
+            <div class="bg-white p-6 rounded-2xl shadow-sm flex items-center gap-4">
+                <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">豬</div>
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800">尊榮豬友</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">ID: pig_user_888</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
+                <h3 class="font-bold text-gray-800 border-b pb-2">我上架的商品管理</h3>
+                <div id="my-product-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
+        </div>
+
     </main>
 
     <!-- 底部導航列 -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t py-2 px-6 flex justify-around items-center z-40 max-w-4xl mx-auto shadow-lg">
+        <button onclick="switchTab('coin')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
+            <span class="text-xl">ⓟ</span>
+            <span>豬幣</span>
+        </button>
         <button onclick="switchTab('market')" class="flex flex-col items-center text-orange-500 font-medium text-xs">
             <span class="text-xl">🏠</span>
             <span>市集</span>
         </button>
         <button onclick="switchTab('upload')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
-            <span class="text-xl">➕</span>
-            <span>上架</span>
+            <span class="text-xl">🎁</span>
+            <span>獎品</span>
         </button>
-        <button onclick="switchTab('chat')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
-            <span class="text-xl">💬</span>
-            <span>聊天</span>
+        <button onclick="switchTab('profile')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
+            <span class="text-xl">👤</span>
+            <span>我的</span>
         </button>
     </nav>
 
