@@ -407,49 +407,49 @@
         };
 
         window.redeemProduct = async function() {
-    if (!currentModalProductId) return;
-    const product = allProducts.find(p => p.id === currentModalProductId);
-    if (!product) return;
-
-    if (myCoin < product.price) {
-        alert('您的豬幣餘額不足，無法兌換此商品！');
-        return;
-    }
-
-    if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
-
-    try {
-        // 1. 更新商品狀態，記錄買家與解鎖後的原始圖片
-        const docRef = doc(db, "products", currentModalProductId);
-        await updateDoc(docRef, { 
-            buyer: '尊榮豬友 (自己)',
-            maskedImage: product.originalImage || product.maskedImage // 確保將畫面的遮罩圖替換為原始未遮罩圖
-        });
-        
-        // 2. 扣除本地與模擬成員金幣
-        myCoin -= product.price;
-        mockMembers[0].coin = myCoin;
-        document.getElementById('my-coin-display').innerText = myCoin;
-
-        // 3. 寫入金流交易記錄至 Firestore (選用但建議)
-        await addDoc(collection(db, "transactions"), {
-            type: 'redeem',
-            productId: product.id,
-            productName: product.name,
-            price: product.price,
-            buyer: '尊榮豬友 (自己)',
-            createdAt: serverTimestamp()
-        });
-
-        alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩。');
-        window.closeDetailModal();
-        await loadProducts(); // 重新載入商品以更新前端畫面
-        window.switchTab('profile'); // 自動切換至我的頁面查看已兌換商品
-    } catch (error) {
-        console.error("兌換失敗：", error);
-        alert('兌換失敗');
-    }
-};
+        if (!currentModalProductId) return;
+        const product = allProducts.find(p => p.id === currentModalProductId);
+        if (!product) return;
+    
+        if (myCoin < product.price) {
+            alert('您的豬幣餘額不足，無法兌換此商品！');
+            return;
+        }
+    
+        if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
+    
+        try {
+            // 1. 更新商品狀態，記錄買家與解鎖後的原始圖片
+            const docRef = doc(db, "products", currentModalProductId);
+            await updateDoc(docRef, { 
+                buyer: '尊榮豬友 (自己)',
+                maskedImage: product.originalImage || product.maskedImage // 確保將畫面的遮罩圖替換為原始未遮罩圖
+            });
+            
+            // 2. 扣除本地與模擬成員金幣
+            myCoin -= product.price;
+            mockMembers[0].coin = myCoin;
+            document.getElementById('my-coin-display').innerText = myCoin;
+    
+            // 3. 寫入金流交易記錄至 Firestore (選用但建議)
+            await addDoc(collection(db, "transactions"), {
+                type: 'redeem',
+                productId: product.id,
+                productName: product.name,
+                price: product.price,
+                buyer: '尊榮豬友 (自己)',
+                createdAt: serverTimestamp()
+            });
+    
+            alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩。');
+            window.closeDetailModal();
+            await loadProducts(); // 重新載入商品以更新前端畫面
+            window.switchTab('profile'); // 自動切換至我的頁面查看已兌換商品
+        } catch (error) {
+            console.error("兌換失敗：", error);
+            alert('兌換失敗');
+        }
+    };
     </script>
 </head>
 <body class="bg-gray-100 min-h-screen pb-20">
