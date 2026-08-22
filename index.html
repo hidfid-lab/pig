@@ -8,7 +8,7 @@
     <!-- 引入 Firebase App 與 Firestore SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateLink, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCq2RtHFB1R_uXbgrAJQ2GWRxAMZS5ij8E",
@@ -25,6 +25,11 @@
 
         let selectedCategory = '貼圖';
         let allProducts = [];
+        let mockMembers = [
+            { id: 'm1', name: '尊榮豬友 (自己)', coin: 1280, handle: 'pig_user_888' },
+            { id: 'm2', name: '阿明股東', coin: 4500, handle: 'ming_99' },
+            { id: 'm3', name: '小紅豬粉', coin: 320, handle: 'hong_pig' }
+        ];
         let canvas, ctx, isDrawing = false, originalImage = null;
         let drawHistory = [];
         let currentKeyword = '';
@@ -47,7 +52,7 @@
 
         // 頁面切換控制
         window.switchTab = function(tabName) {
-            ['market', 'upload', 'chat', 'coin', 'profile'].forEach(t => {
+            ['market', 'upload', 'chat', 'coin', 'profile', 'admin'].forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) el.classList.add('hidden');
             });
@@ -55,9 +60,10 @@
             const target = document.getElementById(`view-${tabName}`);
             if (target) target.classList.remove('hidden');
 
-            // 如果切換到「我的」，重新渲染個人上架商品列表
             if (tabName === 'profile') {
                 renderMyProducts();
+            } else if (tabName === 'admin') {
+                renderAdminDashboard();
             }
         };
 
@@ -205,10 +211,11 @@
                     price: price,
                     description: description,
                     maskedImage: maskedImageBase64,
-                    status: 'pending',
+                    status: 'pending', // 預設審核中
+                    owner: '尊榮豬友 (自己)',
                     createdAt: serverTimestamp()
                 });
-                alert('商品上架成功！');
+                alert('商品已送出，等待管理員審核！');
                 window.clearImage();
                 document.getElementById('prod-name').value = '';
                 document.getElementById('prod-price').value = '';
@@ -238,16 +245,17 @@
             }
         }
 
+        // 只渲染狀態為 active (已上架) 的商品到首頁展示牆
         function renderProducts() {
             const container = document.getElementById('product-list');
-            let filtered = allProducts.filter(p => p.category === selectedCategory);
+            let filtered = allProducts.filter(p => p.category === selectedCategory && p.status === 'active');
 
             if (currentKeyword) {
-                filtered = allProducts.filter(p => p.name.toLowerCase().includes(currentKeyword) || (p.description && p.description.toLowerCase().includes(currentKeyword)));
+                filtered = allProducts.filter(p => p.status === 'active' && (p.name.toLowerCase().includes(currentKeyword) || (p.description && p.description.toLowerCase().includes(currentKeyword))));
             }
             
             if (filtered.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">目前尚無符合的商品</div>`;
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">目前尚無上架中的商品（等待管理員審核放行）</div>`;
                 return;
             }
 
@@ -280,7 +288,9 @@
                         <img src="${p.maskedImage}" alt="${p.name}" class="w-full h-32 object-cover rounded-lg mb-2">
                         <div class="flex items-center justify-between mb-1">
                             <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded">${p.category}</span>
-                            <span class="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">${p.status === 'pending' ? '審核中' : '上架中'}</span>
+                            <span class="text-xs ${p.status === 'active' ? 'text-green-600 bg-green-50' : 'text-amber-600 bg-amber-50'} px-2 py-0.5 rounded">
+                                ${p.status === 'active' ? '上架中' : '審核中'}
+                            </span>
                         </div>
                         <h3 class="font-bold text-base text-gray-800">${p.name}</h3>
                     </div>
@@ -291,6 +301,60 @@
                 </div>
             `).join('');
         }
+
+        // 渲染管理員後臺
+        window.renderAdminDashboard = function() {
+            const pendingContainer = document.getElementById('admin-pending-list');
+            const memberContainer = document.getElementById('admin-member-list');
+
+            // 1. 待審核商品清單
+            const pendingProducts = allProducts.filter(p => p.status === 'pending');
+            if (pendingProducts.length === 0) {
+                pendingContainer.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前沒有需要審核的商品</div>`;
+            } else {
+                pendingContainer.innerHTML = pendingProducts.map(p => `
+                    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border">
+                        <div class="flex items-center gap-3">
+                            <img src="${p.maskedImage}" class="w-12 h-12 object-cover rounded-lg">
+                            <div>
+                                <h4 class="font-bold text-sm text-gray-800">${p.name} (${p.category})</h4>
+                                <p class="text-xs text-gray-500">價格: NT$ ${p.price} | 上架者: ${p.owner || '尊榮豬友'}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="approveProduct('${p.id}')" class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-600 transition">通過審核</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 2. 成員資產與清單檢視
+            memberContainer.innerHTML = mockMembers.map(m => `
+                <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border">
+                    <div>
+                        <h4 class="font-bold text-sm text-gray-800">${m.name}</h4>
+                        <p class="text-xs text-gray-500">ID: ${m.handle}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-orange-600 font-bold text-sm">${m.coin} P</span>
+                        <p class="text-xs text-gray-400">金幣餘額</p>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // 管理員通過審核
+        window.approveProduct = async function(id) {
+            try {
+                const docRef = doc(db, "products", id);
+                await updateDoc(docRef, { status: 'active' });
+                alert('商品已審核通過並上架！');
+                loadProducts();
+            } catch (error) {
+                console.error("審核失敗：", error);
+                alert('更新狀態失敗');
+            }
+        };
 
         window.openDetailModal = function(id) {
             const product = allProducts.find(p => p.id === id);
@@ -317,7 +381,8 @@
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
             <input type="text" oninput="handleSearch(event)" placeholder="搜尋商品" class="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+            <button onclick="switchTab('admin')" class="px-3 py-1.5 bg-gray-800 text-white rounded-full text-xs font-bold hover:bg-gray-900 transition" title="管理員後臺">⚙️ 管理</button>
             <button onclick="switchTab('upload')" class="w-10 h-10 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-xl hover:bg-orange-600 transition shadow" title="新增上架">+</button>
             <button onclick="switchTab('chat')" class="w-10 h-10 bg-gray-100 text-orange-500 rounded-full flex items-center justify-center text-xl hover:bg-gray-200 transition" title="聊天室">💬</button>
         </div>
@@ -443,6 +508,28 @@
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
                 <h3 class="font-bold text-gray-800 border-b pb-2">我上架的商品管理</h3>
                 <div id="my-product-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
+        </div>
+
+        <!-- 6. 管理員後臺分頁 -->
+        <div id="view-admin" class="hidden space-y-4">
+            <div class="bg-white p-6 rounded-2xl shadow-sm space-y-4">
+                <div class="flex items-center justify-between border-b pb-3">
+                    <h2 class="text-lg font-bold text-gray-800">⚙️ 管理員營運後臺</h2>
+                    <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>
+                </div>
+
+                <!-- 待審核區 -->
+                <div class="space-y-2">
+                    <h3 class="font-bold text-sm text-gray-700">待審核商品清單</h3>
+                    <div id="admin-pending-list" class="space-y-2"></div>
+                </div>
+
+                <!-- 成員與資產管理區 -->
+                <div class="space-y-2 pt-4 border-t">
+                    <h3 class="font-bold text-sm text-gray-700">成員與金幣餘額總覽</h3>
+                    <div id="admin-member-list" class="space-y-2"></div>
+                </div>
             </div>
         </div>
 
