@@ -26,6 +26,7 @@
 
         let selectedCategory = '貼圖';
         let base64Image = '';
+        let allProducts = [];
 
         // 分類切換邏輯
         window.setCategory = function(cat) {
@@ -106,12 +107,9 @@
                 alert('上架失敗，請稍後再試。');
             } finally {
                 btn.disabled = false;
-                btn.innerText = '上架中...'; // 這裡可依需求調整按鈕文字
                 btn.innerText = '確認上架';
             }
         };
-
-        let allProducts = [];
 
         // 從 Firestore 載入商品
         async function loadProducts() {
@@ -148,13 +146,32 @@
                     </div>
                     <div class="mt-4 flex items-center justify-between">
                         <span class="text-red-500 font-bold text-lg">NT$ ${p.price}</span>
-                        <button class="bg-orange-500 text-white px-3 py-1.5 rounded text-sm hover:bg-orange-600 transition">查看詳情</button>
+                        <button onclick="openDetailModal('${p.id}')" class="bg-orange-500 text-white px-3 py-1.5 rounded text-sm hover:bg-orange-600 transition">查看詳情</button>
                     </div>
                 </div>
             `).join('');
         }
 
-        // 畫面載入完成後自動抓取資料
+        // 開啟詳情 Modal
+        window.openDetailModal = function(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            document.getElementById('modal-img').src = product.maskedImage;
+            document.getElementById('modal-category').innerText = product.category;
+            document.getElementById('modal-name').innerText = product.name;
+            document.getElementById('modal-price').innerText = `NT$ ${product.price}`;
+            document.getElementById('modal-desc').innerText = product.description || '無使用說明';
+            document.getElementById('modal-status').innerText = product.status === 'pending' ? '狀態：審核中' : '狀態：上架中';
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+        };
+
+        // 關閉詳情 Modal
+        window.closeDetailModal = function() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        };
+
         window.addEventListener('DOMContentLoaded', () => {
             loadProducts();
         });
@@ -167,13 +184,11 @@
         <div class="bg-white p-6 rounded-xl shadow-md">
             <h2 class="text-xl font-bold text-gray-800 mb-4">商品上架與序號遮蔽</h2>
             
-            <!-- 圖片上傳 -->
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">商品序號圖片</label>
                 <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"/>
             </div>
 
-            <!-- 預覽容器 -->
             <div id="preview-container" class="hidden mb-4 border border-dashed border-gray-300 p-4 rounded text-center">
                 <img id="preview-img" class="max-h-48 mx-auto mb-2 rounded" />
                 <button onclick="clearImage()" class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300">清除圖片</button>
@@ -190,34 +205,47 @@
                 </div>
             </div>
 
-            <!-- 商品名稱 -->
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">商品名稱</label>
                 <input type="text" id="prod-name" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="請輸入商品名稱">
             </div>
 
-            <!-- 商品價格 -->
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">商品價格 (100 - 30000)</label>
                 <input type="number" id="prod-price" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="100">
             </div>
 
-            <!-- 使用說明 -->
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-1">使用說明</label>
                 <textarea id="prod-desc" rows="3" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="請輸入說明"></textarea>
             </div>
 
-            <!-- 送出按鈕 -->
             <button id="submit-btn" onclick="submitProduct()" class="w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition shadow">確認上架</button>
         </div>
 
         <!-- 首頁商品展示牆區塊 -->
         <div class="bg-white p-6 rounded-xl shadow-md">
             <h2 class="text-xl font-bold text-gray-800 mb-4">商品展示牆</h2>
-            <!-- 商品列表格 -->
             <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <!-- 動態載入商品 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品詳情 Modal 視窗 -->
+    <div id="detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            <img id="modal-img" class="w-full h-64 object-cover rounded-xl" />
+            <div class="flex items-center justify-between">
+                <span id="modal-category" class="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-medium"></span>
+                <span id="modal-status" class="text-xs text-gray-500"></span>
+            </div>
+            <h3 id="modal-name" class="text-xl font-bold text-gray-800"></h3>
+            <p id="modal-desc" class="text-gray-600 text-sm bg-gray-50 p-3 rounded-lg"></p>
+            <div class="flex items-center justify-between pt-2 border-t">
+                <span id="modal-price" class="text-red-500 font-bold text-2xl"></span>
+                <button onclick="alert('模擬兌換功能開發中！')" class="bg-orange-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-orange-600 transition shadow">兌換商品</button>
             </div>
         </div>
     </div>
