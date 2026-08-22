@@ -29,17 +29,26 @@
         let allProducts = [];
         let myCoin = 1280;
         let currentUser = null;
-        let currentChatTarget = 'public'; // 'public' 或其他使用者的 uid
+        let currentMemberData = null;
+        let currentChatTarget = 'public';
         let unsubscribeChat = null;
-        let mockMembers = [
-            { id: 'm1', name: '管理員 (自己)', coin: 1280, handle: 'Lianwu_user_888' },
-            { id: 'm2', name: '阿明股東', coin: 4500, handle: 'ming_99' },
-            { id: 'm3', name: '小紅豬', coin: 320, handle: 'hong_Lianwu' }
-        ];
+        let allMembers = [];
         let canvas, ctx, isDrawing = false, originalImage = null, originalImageBase64 = null;
         let drawHistory = [];
         let currentKeyword = '';
         let currentModalProductId = null;
+
+        // 轉換為臺灣時間字串 (YYYY/MM/DD HH:mm)
+        function formatTaiwanTime(timestamp) {
+            if (!timestamp || !timestamp.toDate) return '剛剛';
+            const date = timestamp.toDate();
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const hh = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${yyyy}/${mm}/${dd} ${hh}:${min}`;
+        }
 
         window.addEventListener('DOMContentLoaded', () => {
             canvas = document.getElementById('mask-canvas');
@@ -55,7 +64,6 @@
                 canvas.addEventListener('touchend', stopDrawing);
             }
 
-            // 監聽 Firebase 登入狀態
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     currentUser = user;
@@ -66,24 +74,28 @@
                     document.getElementById('profile-name').innerText = user.displayName || '會員';
                     document.getElementById('profile-handle').innerText = `ID: ${user.uid.substring(0, 8)}`;
 
-                    // 同步或初始化 Firestore 中的使用者資料
                     const userRef = doc(db, "members", user.uid);
                     const userSnap = await getDoc(userRef);
                     if (!userSnap.exists()) {
-                        await setDoc(userRef, {
+                        currentMemberData = {
                             name: user.displayName,
                             email: user.email,
                             coin: 1280,
                             handle: user.uid.substring(0, 8),
+                            status: 'pending', // 預設需管理員審核
+                            chatEnabled: false, // 成員間私訊預設未開通
                             createdAt: serverTimestamp()
-                        });
+                        };
+                        await setDoc(userRef, currentMemberData);
                         myCoin = 1280;
                     } else {
-                        myCoin = userSnap.data().coin || 1280;
+                        currentMemberData = userSnap.data();
+                        myCoin = currentMemberData.coin || 1280;
                     }
                     document.getElementById('my-coin-display').innerText = myCoin;
                 } else {
                     currentUser = null;
+                    currentMemberData = null;
                     document.getElementById('auth-login-btn').classList.remove('hidden');
                     document.getElementById('auth-user-info').classList.add('hidden');
                 }
@@ -95,10 +107,10 @@
         window.loginWithGoogle = async function() {
             try {
                 await signInWithPopup(auth, googleProvider);
-                alert('Google 登入成功！');
+                alert('Google 登入與註冊成功！');
             } catch (error) {
                 console.error("登入失敗：", error);
-                alert('登入失敗，請稍後再試');
+                alert('登入失敗，請確認 Firebase Console 是否已授權此網域');
             }
         };
 
@@ -131,7 +143,6 @@
             }
         };
 
-        // 「我的」專區子分頁切換
         window.showProfileSubTab = function(subTab) {
             ['profile-menu', 'profile-redeemed', 'profile-sales', 'profile-transactions'].forEach(id => {
                 const el = document.getElementById(id);
@@ -286,6 +297,14 @@
                 alert('請先登入 Google 帳號才能上架商品！');
                 return;
             }
+
+            // 檢查會員上架權限與 5 個商品限制
+            const myUploaded = allProducts.filter(p => p.ownerUid === currentUser.uid);
+            if (myUploaded.length >= 5) {
+                alert('每位會員最多只能上架 5 個商品！');
+                return;
+            }
+
             const name = document.getElementById('prod-name').value.trim();
             const price = Number(document.getElementById('prod-price').value);
             const description = document.getElementById('prod-desc').value.trim();
@@ -356,9 +375,9 @@
         async function loadMembersList() {
             try {
                 const snapshot = await getDocs(collection(db, "members"));
-                mockMembers = [];
+                allMembers = [];
                 snapshot.forEach(doc => {
-                    mockMembers.push({ id: doc.id, ...doc.data() });
+                    allMembers.push({ id: doc.id, ...doc.data() });
                 });
                 renderChatMembersList();
             } catch (e) {
@@ -384,16 +403,7 @@
                 }
         
                 container.innerHTML = txList.map(tx => {
-                    let timeStr = '剛剛';
-                    if (tx.createdAt && tx.createdAt.toDate) {
-                        const date = tx.createdAt.toDate();
-                        const yyyy = date.getFullYear();
-                        const mm = String(date.getMonth() + 1).padStart(2, '0');
-                        const dd = String(date.getDate()).padStart(2, '0');
-                        const hh = String(date.getHours()).padStart(2, '0');
-                        const min = String(date.getMinutes()).padStart(2, '0');
-                        timeStr = `${yyyy}/${mm}/${dd} ${hh}:${min}`;
-                    }
+                    const timeStr = formatTaiwanTime(tx.createdAt);
                     const isPositive = tx.price > 0 || tx.type === 'income' || tx.type === 'refund';
                     const sign = isPositive ? '+' : '-';
                     const colorClass = isPositive ? 'text-green-600' : 'text-red-500';
@@ -446,7 +456,7 @@
 
         function renderMyRedeemedList() {
             const container = document.getElementById('my-redeemed-list');
-            const userName = currentUser ? currentUser.displayName : '管理員 (自己)';
+            const userName = currentUser ? currentUser.displayName : '會員';
             const myRedeemed = allProducts.filter(p => p.buyer === userName);
             
             if (myRedeemed.length === 0) {
@@ -468,11 +478,10 @@
 
         function renderMySalesList() {
             const container = document.getElementById('my-sales-list');
-            const userName = currentUser ? currentUser.displayName : '管理員 (自己)';
-            const myUploaded = allProducts.filter(p => p.owner === userName);
+            const myUploaded = allProducts.filter(p => p.ownerUid === (currentUser ? currentUser.uid : ''));
 
             if (myUploaded.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無上架紀錄</div>`;
+                container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無上架紀錄 (最多可上架 5 個)</div>`;
                 return;
             }
 
@@ -511,21 +520,41 @@
                 `).join('');
             }
 
-            memberContainer.innerHTML = mockMembers.map((m) => `
+            memberContainer.innerHTML = allMembers.map((m) => `
                 <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border">
                     <div>
-                        <h4 class="font-bold text-sm text-gray-800">${m.name || '會員'}</h4>
-                        <p class="text-xs text-gray-500">ID: ${m.handle || m.id}</p>
+                        <h4 class="font-bold text-sm text-gray-800">${m.name || '會員'} <span class="text-xs text-orange-500">(${m.status === 'active' ? '已審核' : '待審核'})</span></h4>
+                        <p class="text-xs text-gray-500">私訊功能：${m.chatEnabled ? '已開通' : '未開通'}</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <div class="text-right">
-                            <span class="text-orange-600 font-bold text-sm">${m.coin || 0} P</span>
-                            <p class="text-xs text-gray-400">金幣餘額</p>
-                        </div>
-                        <button onclick="adjustMemberCoin('${m.id}')" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-xs font-bold hover:bg-gray-300 transition">調整金幣</button>
+                    <div class="flex items-center gap-2">
+                        ${m.status !== 'active' ? `<button onclick="approveMember('${m.id}')" class="bg-blue-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-blue-600 transition">審核會員</button>` : ''}
+                        <button onclick="toggleChatPermission('${m.id}', ${!m.chatEnabled})" class="bg-purple-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-purple-600 transition">${m.chatEnabled ? '關閉私訊' : '開通私訊'}</button>
+                        <button onclick="adjustMemberCoin('${m.id}')" class="bg-gray-200 text-gray-700 px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-gray-300 transition">調整金幣</button>
                     </div>
                 </div>
             `).join('');
+        };
+
+        window.approveMember = async function(memberId) {
+            try {
+                await updateDoc(doc(db, "members", memberId), { status: 'active' });
+                alert('會員已通過審核！');
+                loadMembersList();
+                renderAdminDashboard();
+            } catch (e) {
+                console.error("審核會員失敗", e);
+            }
+        };
+
+        window.toggleChatPermission = async function(memberId, enable) {
+            try {
+                await updateDoc(doc(db, "members", memberId), { chatEnabled: enable });
+                alert(enable ? '已成功開通該成員的私訊功能！' : '已關閉該成員的私訊功能');
+                loadMembersList();
+                renderAdminDashboard();
+            } catch (e) {
+                console.error("切換私訊權限失敗", e);
+            }
         };
 
         window.adjustMemberCoin = async function(memberId) {
@@ -633,8 +662,12 @@
             }
         };
 
-        // 即時聊天與成員對成員私訊邏輯
         window.setChatTarget = function(targetId, targetName) {
+            // 檢查成員私訊權限
+            if (targetId !== 'public' && currentMemberData && !currentMemberData.chatEnabled) {
+                alert('您的成員私訊功能尚未經管理員審核開通，目前僅能使用公開大廳與管理員諮詢！');
+                return;
+            }
             currentChatTarget = targetId;
             document.getElementById('chat-room-title').innerText = targetId === 'public' ? '小努吃蓮霧公開聊天室' : `與 ${targetName} 的私密對話`;
             initChatListeners();
@@ -646,12 +679,12 @@
             
             let html = `<button onclick="setChatTarget('public', '公開大廳')" class="w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition ${currentChatTarget === 'public' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">📢 公開大廳聊天室</button>`;
             
-            mockMembers.forEach(m => {
-                if (currentUser && m.id === currentUser.uid) return; // 不列出自己
+            allMembers.forEach(m => {
+                if (currentUser && m.id === currentUser.uid) return;
                 const active = currentChatTarget === m.id;
                 html += `<button onclick="setChatTarget('${m.id}', '${m.name}')" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition flex items-center justify-between ${active ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
                     <span>💬 ${m.name || '會員'}</span>
-                    <span class="text-[10px] opacity-70">${m.coin || 0}P</span>
+                    <span class="text-[10px] opacity-70">${m.chatEnabled ? '已開通私訊' : '未開通'}</span>
                 </button>`;
             });
             container.innerHTML = html;
@@ -665,12 +698,10 @@
             const messagesContainer = document.getElementById('chat-messages');
             messagesContainer.innerHTML = `<div class="text-center text-gray-400 py-4 text-xs">載入訊息中...</div>`;
 
-            // 決定聊天室的 Firestore Collection 路徑或查詢條件
             let q;
             if (currentChatTarget === 'public') {
                 q = query(collection(db, "chats"), orderBy("createdAt", "asc"));
             } else {
-                // 私訊：結合雙方 ID 排序確保共用同一聊天紀錄路徑
                 const chatId = [currentUser ? currentUser.uid : 'anon', currentChatTarget].sort().join('_');
                 q = query(collection(db, "private_chats", chatId, "messages"), orderBy("createdAt", "asc"));
             }
@@ -678,19 +709,19 @@
             unsubscribeChat = onSnapshot(q, (snapshot) => {
                 messagesContainer.innerHTML = '';
                 if (snapshot.empty) {
-                    messagesContainer.innerHTML = `<div class="text-center text-gray-400 py-8 text-xs">目前尚無訊息，趕快打個招呼吧！</div>`;
+                    messagesContainer.innerHTML = `<div class="text-center text-gray-400 py-8 text-xs">目前尚無聊天紀錄，所有對話皆同步更新至 Firebase！</div>`;
                     return;
                 }
 
                 snapshot.forEach((docSnap) => {
                     const msg = docSnap.data();
                     const isMe = currentUser && msg.senderUid === currentUser.uid;
-                    const timeStr = msg.createdAt && msg.createdAt.toDate ? msg.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '剛剛';
+                    const timeStr = formatTaiwanTime(msg.createdAt);
 
                     const div = document.createElement('div');
                     div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1`;
                     div.innerHTML = `
-                        <span class="text-[10px] text-gray-400 px-1">${msg.senderName || '匿名'} · ${timeStr}</span>
+                        <span class="text-[10px] text-gray-400 px-1">${msg.senderName || '會員'} · ${timeStr}</span>
                         <div class="max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${isMe ? 'bg-orange-500 text-white rounded-br-none' : 'bg-gray-100 text-gray-800 rounded-bl-none'}">
                             ${msg.text}
                         </div>
@@ -711,6 +742,11 @@
 
             if (!currentUser) {
                 alert('請先登入 Google 帳號才能發送訊息！');
+                return;
+            }
+
+            if (currentChatTarget !== 'public' && currentMemberData && !currentMemberData.chatEnabled) {
+                alert('您的私訊功能尚未經管理員審核開通，無法進行成員間私訊！');
                 return;
             }
 
@@ -757,7 +793,6 @@
             <input type="text" oninput="handleSearch(event)" placeholder="搜尋商品" class="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
         </div>
         <div class="flex items-center gap-2">
-            <!-- Google 登入按鈕與狀態區 -->
             <button id="auth-login-btn" onclick="loginWithGoogle()" class="px-3 py-1.5 bg-orange-500 text-white rounded-full text-xs font-bold hover:bg-orange-600 transition">Google 登入</button>
             <div id="auth-user-info" class="hidden flex items-center gap-2">
                 <img id="user-avatar" class="w-8 h-8 rounded-full border object-cover">
@@ -773,7 +808,6 @@
 
     <main class="max-w-4xl mx-auto p-4 space-y-4">
 
-        <!-- 市集首頁 -->
         <div id="view-market" class="space-y-4">
             <div class="bg-gradient-to-r from-teal-400 to-teal-500 text-white p-5 rounded-2xl shadow">
                 <h2 class="text-center font-bold text-lg mb-1">公 告</h2>
@@ -795,7 +829,7 @@
 
         <div id="view-upload" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b pb-3">
-                <h2 class="text-lg font-bold text-gray-800">商品上架與序號遮蔽</h2>
+                <h2 class="text-lg font-bold text-gray-800">商品上架與序號遮蔽 (限 5 個)</h2>
                 <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>
             </div>
             
@@ -843,7 +877,6 @@
             <button id="submit-btn" onclick="submitProduct()" class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition shadow">確認上架</button>
         </div>
 
-        <!-- 支援群組與成員對成員私訊的即時聊天室 -->
         <div id="view-chat" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b pb-3">
                 <h2 id="chat-room-title" class="text-lg font-bold text-gray-800">小努吃蓮霧公開聊天室</h2>
@@ -851,17 +884,15 @@
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <!-- 左側對話對象切換清單 -->
                 <div class="md:col-span-1 border-r pr-2 space-y-2 max-h-80 overflow-y-auto">
-                    <p class="text-xs font-bold text-gray-400 px-1">聊天頻道與成員</p>
+                    <p class="text-xs font-bold text-gray-400 px-1">頻道與成員私訊 (需管理員開通)</p>
                     <div id="chat-members-container" class="space-y-1"></div>
                 </div>
 
-                <!-- 右側即時訊息區 -->
                 <div class="md:col-span-3 flex flex-col h-80">
                     <div id="chat-messages" class="flex-1 overflow-y-auto space-y-3 p-3 bg-gray-50 rounded-xl border"></div>
                     <div class="mt-3 flex gap-2">
-                        <input type="text" id="chat-input" onkeypress="handleChatKeyPress(event)" placeholder="輸入想聊的話題或議價內容..." class="flex-1 border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <input type="text" id="chat-input" onkeypress="handleChatKeyPress(event)" placeholder="輸入訊息..." class="flex-1 border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                         <button onclick="sendChatMessage()" class="bg-orange-500 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-orange-600 transition">發送</button>
                     </div>
                 </div>
@@ -879,13 +910,12 @@
             </div>
         </div>
 
-        <!-- 「我的」專區 -->
         <div id="view-profile" class="hidden space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm flex items-center gap-4">
                 <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">蓮霧</div>
                 <div>
-                    <h2 id="profile-name" class="text-lg font-bold text-gray-800">管理員</h2>
-                    <p id="profile-handle" class="text-xs text-gray-500 mt-0.5">ID: Lianwu_user_888</p>
+                    <h2 id="profile-name" class="text-lg font-bold text-gray-800">會員</h2>
+                    <p id="profile-handle" class="text-xs text-gray-500 mt-0.5">ID: -</p>
                 </div>
             </div>
 
@@ -895,7 +925,7 @@
                     <span class="text-gray-400">&gt;</span>
                 </button>
                 <button onclick="showProfileSubTab('sales')" class="w-full bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between hover:bg-orange-50 transition">
-                    <span class="font-bold text-gray-800 text-base">🏷️ 銷售區</span>
+                    <span class="font-bold text-gray-800 text-base">🏷️ 銷售區 (上限 5 個)</span>
                     <span class="text-gray-400">&gt;</span>
                 </button>
                 <button onclick="showProfileSubTab('transactions')" class="w-full bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between hover:bg-orange-50 transition">
@@ -942,7 +972,7 @@
                 </div>
 
                 <div class="space-y-2 pt-4 border-t">
-                    <h3 class="font-bold text-sm text-gray-700">成員與金幣餘額總覽</h3>
+                    <h3 class="font-bold text-sm text-gray-700">會員審核與私訊權限管理</h3>
                     <div id="admin-member-list" class="space-y-2"></div>
                 </div>
             </div>
