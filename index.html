@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>商品上架與 Base64 輕量化儲存</title>
+    <title>商品上架與首頁展示</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Firebase App 與 Firestore SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // TODO: 請替換為你自己的 Firebase 專案設定
+        // Firebase 專案設定
         const firebaseConfig = {
-            apiKey: "AIzaSyCq2RtHFBlR_uXbgrAJQ2GWRxAMZS5ij8E",
+            apiKey: "AIzaSyCq2RtHFB1R_uXbgrAJQ2GWRxAMZS5ij8E",
             authDomain: "pigtrade.firebaseapp.com",
             projectId: "pigtrade",
             storageBucket: "pigtrade.firebasestorage.app",
@@ -25,189 +25,201 @@
         const db = getFirestore(app);
 
         let selectedCategory = '貼圖';
+        let base64Image = '';
 
-        // 類別按鈕切換邏輯
-        document.querySelectorAll('.category-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.category-btn').forEach(b => {
-                    b.classList.remove('bg-orange-400', 'text-white');
-                    b.classList.add('bg-gray-50', 'text-gray-600');
-                });
-                e.target.classList.add('bg-orange-400', 'text-white');
-                e.target.classList.remove('bg-gray-50', 'text-gray-600');
-                selectedCategory = e.target.getAttribute('data-val');
-            });
-        });
-
-        const imageInput = document.getElementById('imageInput');
-        const canvasContainer = document.getElementById('canvasContainer');
-        const canvas = document.getElementById('drawCanvas');
-        const ctx = canvas.getContext('2d');
-        const clearBtn = document.getElementById('clearBtn');
-        const submitBtn = document.getElementById('submitBtn');
-        let img = new Image();
-        let isDrawing = false;
-
-        imageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    img.onload = function() {
-                        canvas.width = img.width > 350 ? 350 : img.width;
-                        canvas.height = (img.height / img.width) * canvas.width;
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        canvasContainer.classList.remove('hidden');
+        // 分類切換邏輯
+        window.setCategory = function(cat) {
+            selectedCategory = cat;
+            ['貼圖', '遊戲', '超商', '其它'].forEach(c => {
+                const btn = document.getElementById(`cat-${c}`);
+                if (btn) {
+                    if (c === cat) {
+                        btn.className = "flex-1 py-2 bg-orange-500 text-white rounded font-medium transition";
+                    } else {
+                        btn.className = "flex-1 py-2 bg-gray-100 text-gray-700 rounded font-medium hover:bg-gray-200 transition";
                     }
-                    img.src = event.target.result;
                 }
-                reader.readAsDataURL(file);
+            });
+            renderProducts();
+        };
+
+        // 圖片上傳與預覽
+        window.handleImageUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                base64Image = e.target.result;
+                document.getElementById('preview-img').src = base64Image;
+                document.getElementById('preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.clearImage = function() {
+            base64Image = '';
+            document.getElementById('file-input').value = '';
+            document.getElementById('preview-container').classList.add('hidden');
+        };
+
+        // 上架商品至 Firestore
+        window.submitProduct = async function() {
+            const name = document.getElementById('prod-name').value.trim();
+            const price = Number(document.getElementById('prod-price').value);
+            const description = document.getElementById('prod-desc').value.trim();
+            const btn = document.getElementById('submit-btn');
+
+            if (!base64Image) {
+                alert('請先上傳商品圖片');
+                return;
             }
-        });
-
-        function startDrawing(e) {
-            isDrawing = true;
-            draw(e);
-        }
-
-        function stopDrawing() {
-            isDrawing = false;
-            ctx.beginPath();
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
-
-            ctx.lineWidth = 12;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#ef4444'; // 紅色畫筆
-
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-        }
-
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        window.addEventListener('mouseup', stopDrawing);
-
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', stopDrawing);
-
-        clearBtn.addEventListener('click', function() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        });
-
-        // 點擊上架按鈕：將 Canvas 轉成 Base64 並寫入 Firestore
-        submitBtn.addEventListener('click', async function() {
-            if (canvas.width === 0) {
-                alert('請先上傳並處理商品圖片！');
+            if (!name) {
+                alert('請輸入商品名稱');
+                return;
+            }
+            if (isNaN(price) || price < 100 || price > 30000) {
+                alert('商品價格必須在 100 至 30000 之間');
                 return;
             }
 
-            const productName = document.getElementById('productName').value.trim();
-            const productPrice = Number(document.getElementById('productPrice').value);
-            const productDesc = document.getElementById('productDesc').value.trim();
-
-            if (!productName || !productPrice) {
-                alert('請填寫完整的商品名稱與價格！');
-                return;
-            }
-
-            // 將畫布畫面轉為 Base64 字串
-            const maskedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = '上架中...';
+            btn.disabled = true;
+            btn.innerText = '上架中...';
 
             try {
-                // 寫入 Firestore 集合：products
                 await addDoc(collection(db, "products"), {
                     category: selectedCategory,
-                    name: productName,
-                    price: productPrice,
-                    description: productDesc,
-                    maskedImage: maskedImageBase64, // 儲存塗改後的 Base64 圖片
-                    status: "pending",             // 狀態：待審核
+                    name: name,
+                    price: price,
+                    description: description,
+                    maskedImage: base64Image,
+                    status: 'pending',
                     createdAt: serverTimestamp()
                 });
-
-                alert('商品上架成功，目前狀態為「待審核」！');
-                
-                // 重置表單
-                document.getElementById('productName').value = '';
-                document.getElementById('productPrice').value = '100';
-                document.getElementById('productDesc').value = '';
-                canvasContainer.classList.add('hidden');
-                imageInput.value = '';
+                alert('商品上架成功！');
+                window.clearImage();
+                document.getElementById('prod-name').value = '';
+                document.getElementById('prod-price').value = '';
+                document.getElementById('prod-desc').value = '';
+                loadProducts();
             } catch (error) {
                 console.error("寫入資料庫失敗：", error);
                 alert('上架失敗，請稍後再試。');
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '商品上架';
+                btn.disabled = false;
+                btn.innerText = '上架中...'; // 這裡可依需求調整按鈕文字
+                btn.innerText = '確認上架';
             }
+        };
+
+        let allProducts = [];
+
+        // 從 Firestore 載入商品
+        async function loadProducts() {
+            try {
+                const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                allProducts = [];
+                querySnapshot.forEach((doc) => {
+                    allProducts.push({ id: doc.id, ...doc.data() });
+                });
+                renderProducts();
+            } catch (error) {
+                console.error("讀取商品失敗：", error);
+            }
+        }
+
+        // 渲染商品列表
+        function renderProducts() {
+            const container = document.getElementById('product-list');
+            const filtered = allProducts.filter(p => p.category === selectedCategory);
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-8">目前尚無 ${selectedCategory} 類別的商品</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(p => `
+                <div class="bg-white rounded-lg shadow border p-4 flex flex-col justify-between">
+                    <div>
+                        <img src="${p.maskedImage}" alt="${p.name}" class="w-full h-40 object-cover rounded mb-3">
+                        <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">${p.category}</span>
+                        <h3 class="font-bold text-lg mt-2 text-gray-800">${p.name}</h3>
+                        <p class="text-gray-600 text-sm mt-1 line-clamp-2">${p.description || '無使用說明'}</p>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between">
+                        <span class="text-red-500 font-bold text-lg">NT$ ${p.price}</span>
+                        <button class="bg-orange-500 text-white px-3 py-1.5 rounded text-sm hover:bg-orange-600 transition">查看詳情</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 畫面載入完成後自動抓取資料
+        window.addEventListener('DOMContentLoaded', () => {
+            loadProducts();
         });
     </script>
 </head>
-<body class="bg-gray-100 p-4 max-w-md mx-auto">
+<body class="bg-gray-50 min-h-screen p-4 md:p-8">
 
-    <div class="bg-white rounded-xl shadow-md p-5 space-y-4">
-        <h2 class="text-xl font-bold text-gray-800 text-center">商品上架與序號遮蔽</h2>
+    <div class="max-w-4xl mx-auto space-y-8">
+        <!-- 上架表單區塊 -->
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">商品上架與序號遮蔽</h2>
+            
+            <!-- 圖片上傳 -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">商品序號圖片</label>
+                <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"/>
+            </div>
 
-        <!-- 圖片上傳區 -->
-        <div>
-            <label class="block text-sm font-medium text-red-500 mb-1">商品序號圖片</label>
-            <input type="file" id="imageInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100">
+            <!-- 預覽容器 -->
+            <div id="preview-container" class="hidden mb-4 border border-dashed border-gray-300 p-4 rounded text-center">
+                <img id="preview-img" class="max-h-48 mx-auto mb-2 rounded" />
+                <button onclick="clearImage()" class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300">清除圖片</button>
+            </div>
+
+            <!-- 商品類別 -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">商品類別</label>
+                <div class="flex gap-2">
+                    <button type="button" id="cat-貼圖" onclick="setCategory('貼圖')" class="flex-1 py-2 bg-orange-500 text-white rounded font-medium transition">貼圖</button>
+                    <button type="button" id="cat-遊戲" onclick="setCategory('遊戲')" class="flex-1 py-2 bg-gray-100 text-gray-700 rounded font-medium hover:bg-gray-200 transition">遊戲</button>
+                    <button type="button" id="cat-超商" onclick="setCategory('超商')" class="flex-1 py-2 bg-gray-100 text-gray-700 rounded font-medium hover:bg-gray-200 transition">超商</button>
+                    <button type="button" id="cat-其它" onclick="setCategory('其它')" class="flex-1 py-2 bg-gray-100 text-gray-700 rounded font-medium hover:bg-gray-200 transition">其它</button>
+                </div>
+            </div>
+
+            <!-- 商品名稱 -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">商品名稱</label>
+                <input type="text" id="prod-name" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="請輸入商品名稱">
+            </div>
+
+            <!-- 商品價格 -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">商品價格 (100 - 30000)</label>
+                <input type="number" id="prod-price" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="100">
+            </div>
+
+            <!-- 使用說明 -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">使用說明</label>
+                <textarea id="prod-desc" rows="3" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="請輸入說明"></textarea>
+            </div>
+
+            <!-- 送出按鈕 -->
+            <button id="submit-btn" onclick="submitProduct()" class="w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition shadow">確認上架</button>
         </div>
 
-        <!-- 畫布遮蔽區 -->
-        <div id="canvasContainer" class="hidden relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden flex flex-col items-center p-2 bg-gray-50">
-            <p class="text-xs text-gray-500 mb-2">請使用滑鼠或手指在圖片上塗改遮蔽序號</p>
-            <canvas id="drawCanvas" class="cursor-crosshair touch-none max-w-full rounded shadow"></canvas>
-            <button type="button" id="clearBtn" class="mt-2 px-3 py-1 bg-gray-200 text-xs rounded text-gray-700 hover:bg-gray-300">清除重畫</button>
-        </div>
-
-        <!-- 商品類別 -->
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">商品類別</label>
-            <div class="grid grid-cols-4 gap-2 text-center text-sm">
-                <button type="button" class="category-btn py-2 border rounded-lg bg-orange-400 text-white font-medium" data-val="貼圖">貼圖</button>
-                <button type="button" class="category-btn py-2 border rounded-lg bg-gray-50 text-gray-600" data-val="遊戲">遊戲</button>
-                <button type="button" class="category-btn py-2 border rounded-lg bg-gray-50 text-gray-600" data-val="超商">超商</button>
-                <button type="button" class="category-btn py-2 border rounded-lg bg-gray-50 text-gray-600" data-val="其它">其它</button>
+        <!-- 首頁商品展示牆區塊 -->
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">商品展示牆</h2>
+            <!-- 商品列表格 -->
+            <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- 動態載入商品 -->
             </div>
         </div>
-
-        <!-- 商品名稱 -->
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">商品名稱</label>
-            <input type="text" id="productName" placeholder="例：MyCard 10點 便宜賣！" class="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-        </div>
-
-        <!-- 商品價格 -->
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">商品價格 (100 - 30000)</label>
-            <input type="number" id="productPrice" value="100" class="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-        </div>
-
-        <!-- 使用說明 -->
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">使用說明</label>
-            <textarea id="productDesc" rows="3" placeholder="請輸入使用限制或注意事項..." class="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"></textarea>
-        </div>
-
-        <!-- 提交按鈕 -->
-        <button type="button" id="submitBtn" class="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow transition">商品上架</button>
     </div>
 
 </body>
