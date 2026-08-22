@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>小豬市集</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Firebase App 與 Firestore SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -24,7 +25,7 @@
 
         let selectedCategory = '貼圖';
         let allProducts = [];
-        let myCoin = 1280;
+        let myCoin = 1280; // 個人目前豬幣餘額
         let mockMembers = [
             { id: 'm1', name: '尊榮豬友 (自己)', coin: 1280, handle: 'pig_user_888' },
             { id: 'm2', name: '阿明股東', coin: 4500, handle: 'ming_99' },
@@ -51,6 +52,7 @@
             loadProducts();
         });
 
+        // 頁面切換控制
         window.switchTab = function(tabName) {
             ['market', 'upload', 'chat', 'coin', 'profile', 'admin'].forEach(t => {
                 const el = document.getElementById(`view-${t}`);
@@ -62,7 +64,6 @@
 
             if (tabName === 'profile') {
                 renderMyProducts();
-                loadTransactions();
             } else if (tabName === 'admin') {
                 renderAdminDashboard();
             } else if (tabName === 'coin') {
@@ -90,25 +91,6 @@
             renderProducts();
         };
 
-        // 九宮格快捷按鈕點擊事件處理
-        window.handleGridAction = function(actionType) {
-            if (actionType === 'market') {
-                switchTab('market');
-            } else if (actionType === 'upload') {
-                switchTab('upload');
-            } else if (actionType === 'coin') {
-                switchTab('coin');
-            } else if (actionType === 'profile') {
-                switchTab('profile');
-            } else if (actionType === 'admin') {
-                switchTab('admin');
-            } else if (actionType === 'chat') {
-                switchTab('chat');
-            } else {
-                alert(`點擊了快捷功能：${actionType}`);
-            }
-        };
-
         window.handleImageUpload = function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -117,8 +99,9 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
+                    // 建立 Canvas 進行等比例縮放壓縮，避免超過 Firestore 1MB 限制
                     const canvasResize = document.createElement('canvas');
-                    const MAX_WIDTH = 800;
+                    const MAX_WIDTH = 800; // 限制最大寬度 800px
                     let width = img.width;
                     let height = img.height;
         
@@ -132,8 +115,10 @@
                     const ctxResize = canvasResize.getContext('2d');
                     ctxResize.drawImage(img, 0, 0, width, height);
         
+                    // 取得壓縮後的 Base64 (畫質 0.7)
                     originalImageBase64 = canvasResize.toDataURL('image/jpeg', 0.7);
         
+                    // 載入至原本的遮罩畫布
                     originalImage = new Image();
                     originalImage.onload = function() {
                         canvas.width = originalImage.width;
@@ -251,7 +236,7 @@
                     price: price,
                     description: description,
                     maskedImage: maskedImageBase64,
-                    originalImage: originalImageBase64,
+                    originalImage: originalImageBase64, // 儲存原始未遮罩圖片供兌換後解鎖
                     status: 'pending',
                     owner: '尊榮豬友 (自己)',
                     buyer: null,
@@ -287,41 +272,9 @@
             }
         }
 
-        async function loadTransactions() {
-            try {
-                const q = query(collection(db, "transactions"), orderBy("createdAt", "desc"));
-                const snapshot = await getDocs(q);
-                const txList = [];
-                snapshot.forEach(doc => {
-                    txList.push({ id: doc.id, ...doc.data() });
-                });
-        
-                const container = document.getElementById('transaction-list');
-                if (!container) return;
-        
-                if (txList.length === 0) {
-                    container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無交易明細</div>`;
-                    return;
-                }
-        
-                container.innerHTML = txList.map(tx => `
-                    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border text-sm">
-                        <div>
-                            <h4 class="font-bold text-gray-800">${tx.productName}</h4>
-                            <p class="text-xs text-gray-500">買家：${tx.buyer} | 類型：${tx.type === 'redeem' ? '商品兌換' : tx.type}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-red-500 font-bold">-${tx.price} P</span>
-                        </div>
-                    </div>
-                `).join('');
-            }  catch (error) {
-                console.error("載入交易明細失敗：", error);
-            }
-        }
-
         function renderProducts() {
             const container = document.getElementById('product-list');
+            // 僅顯示狀態為 active 且尚未被兌換的商品
             let filtered = allProducts.filter(p => p.category === selectedCategory && p.status === 'active' && !p.buyer);
 
             if (currentKeyword) {
@@ -370,6 +323,7 @@
                 `).join('');
             }
 
+            // 我的已兌換禮品區（顯示解鎖後的原始圖片）
             const myRedeemed = allProducts.filter(p => p.buyer === '尊榮豬友 (自己)');
             if (myRedeemed.length === 0) {
                 redeemedContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-4 text-sm">目前尚無已兌換的禮品</div>`;
@@ -477,50 +431,60 @@
         };
 
         window.redeemProduct = async function() {
-            if (!currentModalProductId) return;
-            const product = allProducts.find(p => p.id === currentModalProductId);
-            if (!product) return;
-        
-            if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
-        
-            try {
-                if (myCoin < product.price) {
-                    alert('您的豬幣餘額不足，無法兌換此商品！');
-                    return;
-                }
-        
-                const productRef = doc(db, "products", currentModalProductId);
-                await updateDoc(productRef, { 
-                    buyer: '尊榮豬友 (自己)',
-                    maskedImage: product.originalImage || product.maskedImage 
-                });
-                
-                myCoin -= product.price;
-                mockMembers[0].coin = myCoin;
-                document.getElementById('my-coin-display').innerText = myCoin;
-        
-                await addDoc(collection(db, "transactions"), {
-                    type: 'redeem',
-                    productId: product.id,
-                    productName: product.name,
-                    price: product.price,
-                    buyer: '尊榮豬友 (自己)',
-                    createdAt: serverTimestamp()
-                });
-        
-                alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩，交易明細已同步至雲端。');
-                window.closeDetailModal();
-                await loadProducts();
-                window.switchTab('profile');
-            } catch (error) {
-                console.error("兌換與金流寫入失敗：", error);
-                alert('兌換失敗，請檢查網路或資料庫權限');
+        if (!currentModalProductId) return;
+        const product = allProducts.find(p => p.id === currentModalProductId);
+        if (!product) return;
+    
+        if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
+    
+        try {
+            // 1. 從 Firestore 讀取當前登入會員（例如 ID: m1 或目前身分）的最新資料
+            // 假設我們在 Firestore 中有一個 users 集合來存放每位會員的資料
+            const memberRef = doc(db, "users", "m1"); 
+            // 或者是直接從前端模擬的 mockMembers 寫入雲端，此處以 Firestore 查詢為例
+            
+            // 檢查本地或雲端餘額是否充足（此處以全域變數 myCoin 為例，若改為雲端讀取可改成從 DB 取得）
+            if (myCoin < product.price) {
+                alert('您的豬幣餘額不足，無法兌換此商品！');
+                return;
             }
-        };
+    
+            // 2. 更新商品狀態：記錄買家並將畫面圖片替換為原始未遮罩圖
+            const productRef = doc(db, "products", currentModalProductId);
+            await updateDoc(productRef, { 
+                buyer: '尊榮豬友 (自己)',
+                maskedImage: product.originalImage || product.maskedImage 
+            });
+            
+            // 3. 計算扣款後的最新餘額
+            myCoin -= product.price;
+            mockMembers[0].coin = myCoin;
+            document.getElementById('my-coin-display').innerText = myCoin;
+    
+            // 4. 同步寫入金流交易記錄至 Firestore 的 transactions 集合
+            await addDoc(collection(db, "transactions"), {
+                type: 'redeem',
+                productId: product.id,
+                productName: product.name,
+                price: product.price,
+                buyer: '尊榮豬友 (自己)',
+                createdAt: serverTimestamp()
+            });
+    
+            alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩，交易明細已同步至雲端。');
+            window.closeDetailModal();
+            await loadProducts(); // 重新載入商品清單
+            window.switchTab('profile'); // 自動切換至我的頁面
+        } catch (error) {
+            console.error("兌換與金流寫入失敗：", error);
+            alert('兌換失敗，請檢查網路或資料庫權限');
+        }
+    };
     </script>
 </head>
 <body class="bg-gray-100 min-h-screen pb-20">
 
+    <!-- 頂部導航列 -->
     <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex items-center justify-between gap-3 max-w-4xl mx-auto">
         <div class="relative flex-1">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
@@ -535,41 +499,11 @@
 
     <main class="max-w-4xl mx-auto p-4 space-y-4">
 
+        <!-- 1. 市集瀏覽分頁 -->
         <div id="view-market" class="space-y-4">
             <div class="bg-gradient-to-r from-teal-400 to-teal-500 text-white p-5 rounded-2xl shadow">
                 <h2 class="text-center font-bold text-lg mb-1">小 豬 公 告</h2>
                 <p class="text-xs text-center text-teal-100">請經常在小豬市集交易的豬友們，點擊本公告閱讀管理規範，以保護自身權益。</p>
-            </div>
-
-            <!-- 九宮格 / 十二宮格功能按鈕區 -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm">
-                <h3 class="font-bold text-gray-800 mb-3 text-sm">快捷功能</h3>
-                <div class="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                    <button onclick="handleGridAction('market')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">🏠</span>
-                        <span class="text-xs text-gray-700 font-medium">市集首頁</span>
-                    </button>
-                    <button onclick="handleGridAction('upload')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">🎁</span>
-                        <span class="text-xs text-gray-700 font-medium">商品上架</span>
-                    </button>
-                    <button onclick="handleGridAction('coin')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">ⓟ</span>
-                        <span class="text-xs text-gray-700 font-medium">我的豬幣</span>
-                    </button>
-                    <button onclick="handleGridAction('profile')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">👤</span>
-                        <span class="text-xs text-gray-700 font-medium">個人專區</span>
-                    </button>
-                    <button onclick="handleGridAction('chat')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">💬</span>
-                        <span class="text-xs text-gray-700 font-medium">聊天客服</span>
-                    </button>
-                    <button onclick="handleGridAction('admin')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">⚙️</span>
-                        <span class="text-xs text-gray-700 font-medium">管理後臺</span>
-                    </button>
-                </div>
             </div>
 
             <div class="grid grid-cols-4 gap-2">
@@ -585,6 +519,7 @@
             </div>
         </div>
 
+        <!-- 2. 上架商品分頁 -->
         <div id="view-upload" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b pb-3">
                 <h2 class="text-lg font-bold text-gray-800">商品上架與序號遮蔽</h2>
@@ -635,6 +570,7 @@
             <button id="submit-btn" onclick="submitProduct()" class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition shadow">確認上架</button>
         </div>
 
+        <!-- 3. 聊天畫面分頁 -->
         <div id="view-chat" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b pb-3">
                 <h2 class="text-lg font-bold text-gray-800">小豬市集聊天室</h2>
@@ -645,6 +581,7 @@
             </div>
         </div>
 
+        <!-- 4. 豬幣分頁 -->
         <div id="view-coin" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
             <h2 class="text-lg font-bold text-gray-800 border-b pb-3">我的豬幣錢包</h2>
             <div class="bg-gradient-to-r from-orange-400 to-orange-500 text-white p-6 rounded-2xl shadow flex items-center justify-between">
@@ -656,6 +593,7 @@
             </div>
         </div>
 
+        <!-- 5. 我的分頁 -->
         <div id="view-profile" class="hidden space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm flex items-center gap-4">
                 <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">豬</div>
@@ -671,16 +609,12 @@
             </div>
 
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-                <h3 class="font-bold text-gray-800 border-b pb-2">金流與交易明細紀錄</h3>
-                <div id="transaction-list" class="space-y-2"></div>
-            </div>
-
-            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
                 <h3 class="font-bold text-gray-800 border-b pb-2">我上架的商品紀錄</h3>
                 <div id="my-product-list" class="space-y-2"></div>
             </div>
         </div>
 
+        <!-- 6. 管理員後臺分頁 -->
         <div id="view-admin" class="hidden space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm space-y-4">
                 <div class="flex items-center justify-between border-b pb-3">
@@ -688,11 +622,13 @@
                     <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>
                 </div>
 
+                <!-- 待審核區 -->
                 <div class="space-y-2">
                     <h3 class="font-bold text-sm text-gray-700">待審核商品清單</h3>
                     <div id="admin-pending-list" class="space-y-2"></div>
                 </div>
 
+                <!-- 成員與資產管理區 -->
                 <div class="space-y-2 pt-4 border-t">
                     <h3 class="font-bold text-sm text-gray-700">成員與金幣餘額總覽</h3>
                     <div id="admin-member-list" class="space-y-2"></div>
@@ -702,6 +638,7 @@
 
     </main>
 
+    <!-- 底部導航列 -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t py-2 px-6 flex justify-around items-center z-40 max-w-4xl mx-auto shadow-lg">
         <button onclick="switchTab('coin')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
             <span class="text-xl">ⓟ</span>
@@ -721,6 +658,7 @@
         </button>
     </nav>
 
+    <!-- 商品詳情 Modal 視窗 -->
     <div id="detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
             <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
