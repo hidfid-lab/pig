@@ -25,8 +25,26 @@
         const db = getFirestore(app);
 
         let selectedCategory = '貼圖';
-        let base64Image = '';
         let allProducts = [];
+        let canvas, ctx, isDrawing = false, originalImage = null;
+
+        // 初始化畫布監聽
+        window.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('mask-canvas');
+            if (canvas) {
+                ctx = canvas.getContext('2d');
+                
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseleave', stopDrawing);
+
+                canvas.addEventListener('touchstart', handleTouch);
+                canvas.addEventListener('touchmove', handleTouch);
+                canvas.addEventListener('touchend', stopDrawing);
+            }
+            loadProducts();
+        });
 
         // 分類切換邏輯
         window.setCategory = function(cat) {
@@ -44,24 +62,77 @@
             renderProducts();
         };
 
-        // 圖片上傳與預覽
+        // 圖片上傳與預覽初始化畫布
         window.handleImageUpload = function(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
-                base64Image = e.target.result;
-                document.getElementById('preview-img').src = base64Image;
-                document.getElementById('preview-container').classList.remove('hidden');
+                originalImage = new Image();
+                originalImage.onload = function() {
+                    canvas.width = originalImage.width;
+                    canvas.height = originalImage.height;
+                    ctx.drawImage(originalImage, 0, 0);
+                    document.getElementById('preview-container').classList.remove('hidden');
+                };
+                originalImage.src = e.target.result;
             };
             reader.readAsDataURL(file);
         };
 
         window.clearImage = function() {
-            base64Image = '';
             document.getElementById('file-input').value = '';
             document.getElementById('preview-container').classList.add('hidden');
+            if (ctx && originalImage) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(originalImage, 0, 0);
+            }
         };
+
+        // 畫布繪圖邏輯（紅筆遮蔽）
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = '#ef4444'; // 紅色
+            ctx.lineWidth = Math.max(canvas.width * 0.03, 10);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
 
         // 上架商品至 Firestore
         window.submitProduct = async function() {
@@ -70,7 +141,7 @@
             const description = document.getElementById('prod-desc').value.trim();
             const btn = document.getElementById('submit-btn');
 
-            if (!base64Image) {
+            if (!originalImage) {
                 alert('請先上傳商品圖片');
                 return;
             }
@@ -83,6 +154,8 @@
                 return;
             }
 
+            const maskedImageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
             btn.disabled = true;
             btn.innerText = '上架中...';
 
@@ -92,7 +165,7 @@
                     name: name,
                     price: price,
                     description: description,
-                    maskedImage: base64Image,
+                    maskedImage: maskedImageBase64,
                     status: 'pending',
                     createdAt: serverTimestamp()
                 });
@@ -171,10 +244,6 @@
         window.closeDetailModal = function() {
             document.getElementById('detail-modal').classList.add('hidden');
         };
-
-        window.addEventListener('DOMContentLoaded', () => {
-            loadProducts();
-        });
     </script>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 md:p-8">
@@ -189,9 +258,15 @@
                 <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"/>
             </div>
 
+            <!-- 繪圖預覽容器 -->
             <div id="preview-container" class="hidden mb-4 border border-dashed border-gray-300 p-4 rounded text-center">
-                <img id="preview-img" class="max-h-48 mx-auto mb-2 rounded" />
-                <button onclick="clearImage()" class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300">清除圖片</button>
+                <p class="text-xs text-gray-500 mb-2">請直接在下方圖片上用滑鼠塗鴉遮蔽敏感序號：</p>
+                <div class="relative inline-block max-w-full overflow-hidden border rounded">
+                    <canvas id="mask-canvas" class="cursor-crosshair max-h-64 block mx-auto"></canvas>
+                </div>
+                <div class="mt-2">
+                    <button onclick="clearImage()" class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300">重置畫布/清除塗鴉</button>
+                </div>
             </div>
 
             <!-- 商品類別 -->
