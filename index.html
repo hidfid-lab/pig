@@ -7,8 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Firebase App 與 Firestore SDK -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";[cite: 12]
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";[cite: 12]
 
         const firebaseConfig = {
             apiKey: "AIzaSyCq2RtHFB1R_uXbgrAJQ2GWRxAMZS5ij8E",
@@ -18,217 +18,217 @@
             messagingSenderId: "942025449499",
             appId: "1:942025449499:web:321544b845d15c8b46d8be",
             measurementId: "G-EW5J9KD2R8"
-        };
+        };[cite: 12]
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const app = initializeApp(firebaseConfig);[cite: 12]
+        const db = getFirestore(app);[cite: 12]
 
-        let selectedCategory = '貼圖';
-        let allProducts = [];
-        let myCoin = 1280; // 個人目前豬幣餘額
+        let selectedCategory = '貼圖';[cite: 12]
+        let allProducts = [];[cite: 12]
+        let myCoin = 1280; // 個人目前豬幣餘額[cite: 12]
         let mockMembers = [
             { id: 'm1', name: '尊榮豬友 (自己)', coin: 1280, handle: 'pig_user_888' },
             { id: 'm2', name: '阿明股東', coin: 4500, handle: 'ming_99' },
             { id: 'm3', name: '小紅豬粉', coin: 320, handle: 'hong_pig' }
-        ];
-        let canvas, ctx, isDrawing = false, originalImage = null, originalImageBase64 = null;
-        let drawHistory = [];
-        let currentKeyword = '';
-        let currentModalProductId = null;
+        ];[cite: 12]
+        let canvas, ctx, isDrawing = false, originalImage = null, originalImageBase64 = null;[cite: 12]
+        let drawHistory = [];[cite: 12]
+        let currentKeyword = '';[cite: 12]
+        let currentModalProductId = null;[cite: 12]
 
         window.addEventListener('DOMContentLoaded', () => {
-            canvas = document.getElementById('mask-canvas');
+            canvas = document.getElementById('mask-canvas');[cite: 12]
             if (canvas) {
-                ctx = canvas.getContext('2d');
-                canvas.addEventListener('mousedown', startDrawing);
-                canvas.addEventListener('mousemove', draw);
-                canvas.addEventListener('mouseup', stopDrawing);
-                canvas.addEventListener('mouseleave', stopDrawing);
+                ctx = canvas.getContext('2d');[cite: 12]
+                canvas.addEventListener('mousedown', startDrawing);[cite: 12]
+                canvas.addEventListener('mousemove', draw);[cite: 12]
+                canvas.addEventListener('mouseup', stopDrawing);[cite: 12]
+                canvas.addEventListener('mouseleave', stopDrawing);[cite: 12]
 
-                canvas.addEventListener('touchstart', handleTouch);
-                canvas.addEventListener('touchmove', handleTouch);
-                canvas.addEventListener('touchend', stopDrawing);
+                canvas.addEventListener('touchstart', handleTouch);[cite: 12]
+                canvas.addEventListener('touchmove', handleTouch);[cite: 12]
+                canvas.addEventListener('touchend', stopDrawing);[cite: 12]
             }
-            loadProducts();
+            loadProducts();[cite: 12]
         });
 
         // 頁面切換控制
         window.switchTab = function(tabName) {
             ['market', 'upload', 'chat', 'coin', 'profile', 'admin'].forEach(t => {
-                const el = document.getElementById(`view-${t}`);
-                if (el) el.classList.add('hidden');
+                const el = document.getElementById(`view-${t}`);[cite: 12]
+                if (el) el.classList.add('hidden');[cite: 12]
             });
 
-            const target = document.getElementById(`view-${tabName}`);
-            if (target) target.classList.remove('hidden');
+            const target = document.getElementById(`view-${tabName}`);[cite: 12]
+            if (target) target.classList.remove('hidden');[cite: 12]
 
             if (tabName === 'profile') {
-                renderMyProducts();
-                loadTransactions(); // 加上這行讓切到個人頁面時自動載入金流
+                renderMyProducts();[cite: 12]
+                loadTransactions(); // 加上這行讓切到個人頁面時自動載入金流[cite: 12]
             } else if (tabName === 'admin') {
-                renderAdminDashboard();
+                renderAdminDashboard();[cite: 12]
             } else if (tabName === 'coin') {
-                document.getElementById('my-coin-display').innerText = myCoin;
+                document.getElementById('my-coin-display').innerText = myCoin;[cite: 12]
             }
         };
 
         window.handleSearch = function(event) {
-            currentKeyword = event.target.value.trim().toLowerCase();
-            renderProducts();
+            currentKeyword = event.target.value.trim().toLowerCase();[cite: 12]
+            renderProducts();[cite: 12]
         };
 
         window.setCategory = function(cat) {
-            selectedCategory = cat;
+            selectedCategory = cat;[cite: 12]
             ['貼圖', '遊戲', '超商', '其它'].forEach(c => {
-                const btn = document.getElementById(`cat-${c}`);
+                const btn = document.getElementById(`cat-${c}`);[cite: 12]
                 if (btn) {
                     if (c === cat) {
-                        btn.className = "py-2.5 bg-orange-500 text-white rounded-xl font-medium text-sm transition shadow-sm";
+                        btn.className = "py-2.5 bg-orange-500 text-white rounded-xl font-medium text-sm transition shadow-sm";[cite: 12]
                     } else {
-                        btn.className = "py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition";
+                        btn.className = "py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition";[cite: 12]
                     }
                 }
             });
-            renderProducts();
+            renderProducts();[cite: 12]
         };
 
         window.handleImageUpload = function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            const file = event.target.files[0];[cite: 12]
+            if (!file) return;[cite: 12]
         
-            const reader = new FileReader();
+            const reader = new FileReader();[cite: 12]
             reader.onload = function(e) {
-                const img = new Image();
+                const img = new Image();[cite: 12]
                 img.onload = function() {
                     // 建立 Canvas 進行等比例縮放壓縮，避免超過 Firestore 1MB 限制
-                    const canvasResize = document.createElement('canvas');
-                    const MAX_WIDTH = 800; // 限制最大寬度 800px
-                    let width = img.width;
-                    let height = img.height;
+                    const canvasResize = document.createElement('canvas');[cite: 12]
+                    const MAX_WIDTH = 800; // 限制最大寬度 800px[cite: 12]
+                    let width = img.width;[cite: 12]
+                    let height = img.height;[cite: 12]
         
                     if (width > MAX_WIDTH) {
-                        height = Math.round((height * MAX_WIDTH) / width);
-                        width = MAX_WIDTH;
+                        height = Math.round((height * MAX_WIDTH) / width);[cite: 12]
+                        width = MAX_WIDTH;[cite: 12]
                     }
         
-                    canvasResize.width = width;
-                    canvasResize.height = height;
-                    const ctxResize = canvasResize.getContext('2d');
-                    ctxResize.drawImage(img, 0, 0, width, height);
+                    canvasResize.width = width;[cite: 12]
+                    canvasResize.height = height;[cite: 12]
+                    const ctxResize = canvasResize.getContext('2d');[cite: 12]
+                    ctxResize.drawImage(img, 0, 0, width, height);[cite: 12]
         
                     // 取得壓縮後的 Base64 (畫質 0.7)
-                    originalImageBase64 = canvasResize.toDataURL('image/jpeg', 0.7);
+                    originalImageBase64 = canvasResize.toDataURL('image/jpeg', 0.7);[cite: 12]
         
                     // 載入至原本的遮罩畫布
-                    originalImage = new Image();
+                    originalImage = new Image();[cite: 12]
                     originalImage.onload = function() {
-                        canvas.width = originalImage.width;
-                        canvas.height = originalImage.height;
-                        ctx.drawImage(originalImage, 0, 0);
-                        drawHistory = [];
-                        saveCanvasState();
-                        document.getElementById('preview-container').classList.remove('hidden');
+                        canvas.width = originalImage.width;[cite: 12]
+                        canvas.height = originalImage.height;[cite: 12]
+                        ctx.drawImage(originalImage, 0, 0);[cite: 12]
+                        drawHistory = [];[cite: 12]
+                        saveCanvasState();[cite: 12]
+                        document.getElementById('preview-container').classList.remove('hidden');[cite: 12]
                     };
-                    originalImage.src = originalImageBase64;
+                    originalImage.src = originalImageBase64;[cite: 12]
                 };
-                img.src = e.target.result;
+                img.src = e.target.result;[cite: 12]
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(file);[cite: 12]
         };
 
         function saveCanvasState() {
-            if (drawHistory.length > 20) drawHistory.shift();
-            drawHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            if (drawHistory.length > 20) drawHistory.shift();[cite: 12]
+            drawHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));[cite: 12]
         }
 
         window.undoCanvas = function() {
             if (drawHistory.length > 1) {
-                drawHistory.pop();
-                const previousState = drawHistory[drawHistory.length - 1];
-                ctx.putImageData(previousState, 0, 0);
+                drawHistory.pop();[cite: 12]
+                const previousState = drawHistory[drawHistory.length - 1];[cite: 12]
+                ctx.putImageData(previousState, 0, 0);[cite: 12]
             } else if (drawHistory.length === 1) {
-                ctx.putImageData(drawHistory[0], 0, 0);
+                ctx.putImageData(drawHistory[0], 0, 0);[cite: 12]
             }
         };
 
         window.clearImage = function() {
-            document.getElementById('file-input').value = '';
-            document.getElementById('preview-container').classList.add('hidden');
-            originalImage = null;
-            originalImageBase64 = null;
-            drawHistory = [];
+            document.getElementById('file-input').value = '';[cite: 12]
+            document.getElementById('preview-container').classList.add('hidden');[cite: 12]
+            originalImage = null;[cite: 12]
+            originalImageBase64 = null;[cite: 12]
+            drawHistory = [];[cite: 12]
         };
 
         function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
-            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            const rect = canvas.getBoundingClientRect();[cite: 12]
+            const scaleX = canvas.width / rect.width;[cite: 12]
+            const scaleY = canvas.height / rect.height;[cite: 12]
+            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);[cite: 12]
+            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);[cite: 12]
             return {
                 x: (clientX - rect.left) * scaleX,
                 y: (clientY - rect.top) * scaleY
-            };
+            };[cite: 12]
         }
 
         function startDrawing(e) {
-            isDrawing = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
+            isDrawing = true;[cite: 12]
+            const pos = getPos(e);[cite: 12]
+            ctx.beginPath();[cite: 12]
+            ctx.moveTo(pos.x, pos.y);[cite: 12]
         }
 
         function draw(e) {
-            if (!isDrawing) return;
-            const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = Math.max(canvas.width * 0.03, 10);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.stroke();
+            if (!isDrawing) return;[cite: 12]
+            const pos = getPos(e);[cite: 12]
+            ctx.lineTo(pos.x, pos.y);[cite: 12]
+            ctx.strokeStyle = '#ef4444';[cite: 12]
+            ctx.lineWidth = Math.max(canvas.width * 0.03, 10);[cite: 12]
+            ctx.lineCap = 'round';[cite: 12]
+            ctx.lineJoin = 'round';[cite: 12]
+            ctx.stroke();[cite: 12]
         }
 
         function stopDrawing() {
             if (isDrawing) {
-                isDrawing = false;
-                saveCanvasState();
+                isDrawing = false;[cite: 12]
+                saveCanvasState();[cite: 12]
             }
         }
 
         function handleTouch(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
+            e.preventDefault();[cite: 12]
+            const touch = e.touches[0];[cite: 12]
             const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
                 clientX: touch.clientX,
                 clientY: touch.clientY
-            });
-            canvas.dispatchEvent(mouseEvent);
+            });[cite: 12]
+            canvas.dispatchEvent(mouseEvent);[cite: 12]
         }
 
         window.submitProduct = async function() {
-            const name = document.getElementById('prod-name').value.trim();
-            const price = Number(document.getElementById('prod-price').value);
-            const description = document.getElementById('prod-desc').value.trim();
-            const btn = document.getElementById('submit-btn');
+            const name = document.getElementById('prod-name').value.trim();[cite: 12]
+            const price = Number(document.getElementById('prod-price').value);[cite: 12]
+            const description = document.getElementById('prod-desc').value.trim();[cite: 12]
+            const btn = document.getElementById('submit-btn');[cite: 12]
 
             if (!originalImage) {
-                alert('請先上傳商品圖片');
-                return;
+                alert('請先上傳商品圖片');[cite: 12]
+                return;[cite: 12]
             }
             if (!name) {
-                alert('請輸入商品名稱');
-                return;
+                alert('請輸入商品名稱');[cite: 12]
+                return;[cite: 12]
             }
             if (isNaN(price) || price < 100 || price > 30000) {
-                alert('商品價格必須在 100 至 30000 之間');
-                return;
+                alert('商品價格必須在 100 至 30000 之間');[cite: 12]
+                return;[cite: 12]
             }
 
-            const maskedImageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+            const maskedImageBase64 = canvas.toDataURL('image/jpeg', 0.85);[cite: 12]
 
-            btn.disabled = true;
-            btn.innerText = '上架中...';
+            btn.disabled = true;[cite: 12]
+            btn.innerText = '上架中...';[cite: 12]
 
             try {
                 await addDoc(collection(db, "products"), {
@@ -242,52 +242,52 @@
                     owner: '尊榮豬友 (自己)',
                     buyer: null,
                     createdAt: serverTimestamp()
-                });
-                alert('商品已送出，等待管理員審核！');
-                window.clearImage();
-                document.getElementById('prod-name').value = '';
-                document.getElementById('prod-price').value = '';
-                document.getElementById('prod-desc').value = '';
-                loadProducts();
-                window.switchTab('market');
+                });[cite: 12]
+                alert('商品已送出，等待管理員審核！');[cite: 12]
+                window.clearImage();[cite: 12]
+                document.getElementById('prod-name').value = '';[cite: 12]
+                document.getElementById('prod-price').value = '';[cite: 12]
+                document.getElementById('prod-desc').value = '';[cite: 12]
+                loadProducts();[cite: 12]
+                window.switchTab('market');[cite: 12]
             } catch (error) {
-                console.error("寫入失敗：", error);
-                alert('上架失敗');
+                console.error("寫入失敗：", error);[cite: 12]
+                alert('上架失敗');[cite: 12]
             } finally {
-                btn.disabled = false;
-                btn.innerText = '確認上架';
+                btn.disabled = false;[cite: 12]
+                btn.innerText = '確認上架';[cite: 12]
             }
         };
 
         async function loadProducts() {
             try {
-                const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
-                const querySnapshot = await getDocs(q);
-                allProducts = [];
+                const q = query(collection(db, "products"), orderBy("createdAt", "desc"));[cite: 12]
+                const querySnapshot = await getDocs(q);[cite: 12]
+                allProducts = [];[cite: 12]
                 querySnapshot.forEach((doc) => {
-                    allProducts.push({ id: doc.id, ...doc.data() });
+                    allProducts.push({ id: doc.id, ...doc.data() });[cite: 12]
                 });
-                renderProducts();
+                renderProducts();[cite: 12]
             } catch (error) {
-                console.error("讀取失敗：", error);
+                console.error("讀取失敗：", error);[cite: 12]
             }
         }
 
         async function loadTransactions() {
             try {
-                const q = query(collection(db, "transactions"), orderBy("createdAt", "desc"));
-                const snapshot = await getDocs(q);
-                const txList = [];
+                const q = query(collection(db, "transactions"), orderBy("createdAt", "desc"));[cite: 12]
+                const snapshot = await getDocs(q);[cite: 12]
+                const txList = [];[cite: 12]
                 snapshot.forEach(doc => {
-                    txList.push({ id: doc.id, ...doc.data() });
+                    txList.push({ id: doc.id, ...doc.data() });[cite: 12]
                 });
         
-                const container = document.getElementById('transaction-list');
-                if (!container) return;
+                const container = document.getElementById('transaction-list');[cite: 12]
+                if (!container) return;[cite: 12]
         
                 if (txList.length === 0) {
-                    container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無交易明細</div>`;
-                    return;
+                    container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無交易明細</div>`;[cite: 12]
+                    return;[cite: 12]
                 }
         
                 container.innerHTML = txList.map(tx => `
@@ -300,24 +300,24 @@
                             <span class="text-red-500 font-bold">-${tx.price} P</span>
                         </div>
                     </div>
-                `).join('');
+                `).join('');[cite: 12]
             }  catch (error) {
-                console.error("載入交易明細失敗：", error);
+                console.error("載入交易明細失敗：", error);[cite: 12]
             }
         }
 
         function renderProducts() {
-            const container = document.getElementById('product-list');
+            const container = document.getElementById('product-list');[cite: 12]
             // 僅顯示狀態為 active 且尚未被兌換的商品
-            let filtered = allProducts.filter(p => p.category === selectedCategory && p.status === 'active' && !p.buyer);
+            let filtered = allProducts.filter(p => p.category === selectedCategory && p.status === 'active' && !p.buyer);[cite: 12]
 
             if (currentKeyword) {
-                filtered = allProducts.filter(p => p.status === 'active' && !p.buyer && (p.name.toLowerCase().includes(currentKeyword) || (p.description && p.description.toLowerCase().includes(currentKeyword))));
+                filtered = allProducts.filter(p => p.status === 'active' && !p.buyer && (p.name.toLowerCase().includes(currentKeyword) || (p.description && p.description.toLowerCase().includes(currentKeyword))));[cite: 12]
             }
             
             if (filtered.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">目前尚無上架中的商品</div>`;
-                return;
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">目前尚無上架中的商品</div>`;[cite: 12]
+                return;[cite: 12]
             }
 
             container.innerHTML = filtered.map(p => `
@@ -333,16 +333,16 @@
                         <button onclick="openDetailModal('${p.id}')" class="bg-orange-500 text-white px-3.5 py-1.5 rounded-lg text-sm hover:bg-orange-600 transition">查看詳情</button>
                     </div>
                 </div>
-            `).join('');
+            `).join('');[cite: 12]
         }
 
         function renderMyProducts() {
-            const container = document.getElementById('my-product-list');
-            const redeemedContainer = document.getElementById('my-redeemed-list');
+            const container = document.getElementById('my-product-list');[cite: 12]
+            const redeemedContainer = document.getElementById('my-redeemed-list');[cite: 12]
 
-            const myUploaded = allProducts.filter(p => p.owner === '尊榮豬友 (自己)');
+            const myUploaded = allProducts.filter(p => p.owner === '尊榮豬友 (自己)');[cite: 12]
             if (myUploaded.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-4 text-sm">目前尚無上架紀錄</div>`;
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-4 text-sm">目前尚無上架紀錄</div>`;[cite: 12]
             } else {
                 container.innerHTML = myUploaded.map(p => `
                     <div class="bg-gray-50 rounded-xl p-3 border flex items-center justify-between">
@@ -354,13 +354,13 @@
                             </div>
                         </div>
                     </div>
-                `).join('');
+                `).join('');[cite: 12]
             }
 
             // 我的已兌換禮品區（顯示解鎖後的原始圖片）
-            const myRedeemed = allProducts.filter(p => p.buyer === '尊榮豬友 (自己)');
+            const myRedeemed = allProducts.filter(p => p.buyer === '尊榮豬友 (自己)');[cite: 12]
             if (myRedeemed.length === 0) {
-                redeemedContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-4 text-sm">目前尚無已兌換的禮品</div>`;
+                redeemedContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-4 text-sm">目前尚無已兌換的禮品</div>`;[cite: 12]
             } else {
                 redeemedContainer.innerHTML = myRedeemed.map(p => `
                     <div class="bg-white rounded-xl shadow-sm border p-4 flex flex-col justify-between">
@@ -374,17 +374,17 @@
                             <span class="text-xs text-gray-400">已扣除 ${p.price} 豬幣</span>
                         </div>
                     </div>
-                `).join('');
+                `).join('');[cite: 12]
             }
         }
 
         window.renderAdminDashboard = function() {
-            const pendingContainer = document.getElementById('admin-pending-list');
-            const memberContainer = document.getElementById('admin-member-list');
+            const pendingContainer = document.getElementById('admin-pending-list');[cite: 12]
+            const memberContainer = document.getElementById('admin-member-list');[cite: 12]
 
-            const pendingProducts = allProducts.filter(p => p.status === 'pending');
+            const pendingProducts = allProducts.filter(p => p.status === 'pending');[cite: 12]
             if (pendingProducts.length === 0) {
-                pendingContainer.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前沒有需要審核的商品</div>`;
+                pendingContainer.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前沒有需要審核的商品</div>`;[cite: 12]
             } else {
                 pendingContainer.innerHTML = pendingProducts.map(p => `
                     <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border">
@@ -397,7 +397,7 @@
                         </div>
                         <button onclick="approveProduct('${p.id}')" class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-600 transition">通過審核</button>
                     </div>
-                `).join('');
+                `).join('');[cite: 12]
             }
 
             memberContainer.innerHTML = mockMembers.map((m, index) => `
@@ -414,78 +414,80 @@
                         <button onclick="adjustMemberCoin(${index})" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-xs font-bold hover:bg-gray-300 transition">調整金幣</button>
                     </div>
                 </div>
-            `).join('');
+            `).join('');[cite: 12]
         };
 
         window.adjustMemberCoin = async function(index) {
-            const member = mockMembers[index];
-            const amountStr = prompt(`請輸入要為「${member.name}」增減的豬幣數量（發放請直接輸入正數，扣除請輸入負數）：`, "100");
-            if (amountStr === null) return;
-            const amount = Number(amountStr);
+            const member = mockMembers[index];[cite: 12]
+            const amountStr = prompt(`請輸入要為「${member.name}」增減的豬幣數量（發放請直接輸入正數，扣除請輸入負數）：`, "100");[cite: 12]
+            if (amountStr === null) return;[cite: 12]
+            const amount = Number(amountStr);[cite: 12]
             if (isNaN(amount)) {
-                alert('請輸入有效的數字');
-                return;
+                alert('請輸入有效的數字');[cite: 12]
+                return;[cite: 12]
             }
-            member.coin += amount;
+            member.coin += amount;[cite: 12]
             if (index === 0) {
-                myCoin = member.coin;
+                myCoin = member.coin;[cite: 12]
             }
-            alert(`已成功更新「${member.name}」的豬幣餘額！目前餘額：${member.coin} P`);
-            window.renderAdminDashboard();
+            alert(`已成功更新「${member.name}」的豬幣餘額！目前餘額：${member.coin} P`);[cite: 12]
+            window.renderAdminDashboard();[cite: 12]
         };
 
         window.approveProduct = async function(id) {
             try {
-                const docRef = doc(db, "products", id);
-                await updateDoc(docRef, { status: 'active' });
-                alert('商品已審核通過並上架！');
-                loadProducts();
+                const docRef = doc(db, "products", id);[cite: 12]
+                await updateDoc(docRef, { status: 'active' });[cite: 12]
+                alert('商品已審核通過並上架！');[cite: 12]
+                loadProducts();[cite: 12]
             } catch (error) {
-                console.error("審核失敗：", error);
-                alert('更新狀態失敗');
+                console.error("審核失敗：", error);[cite: 12]
+                alert('更新狀態失敗');[cite: 12]
             }
         };
 
         window.openDetailModal = function(id) {
-            const product = allProducts.find(p => p.id === id);
-            if (!product) return;
-            currentModalProductId = id;
-            document.getElementById('modal-img').src = product.maskedImage;
-            document.getElementById('modal-category').innerText = product.category;
-            document.getElementById('modal-name').innerText = product.name;
-            document.getElementById('modal-price').innerText = `NT$ ${product.price}`;
-            document.getElementById('modal-desc').innerText = product.description || '無使用說明';
-            document.getElementById('modal-status').innerText = '狀態：上架中';
-            document.getElementById('detail-modal').classList.remove('hidden');
+            const product = allProducts.find(p => p.id === id);[cite: 12]
+            if (!product) return;[cite: 12]
+            currentModalProductId = id;[cite: 12]
+            document.getElementById('modal-img').src = product.maskedImage;[cite: 12]
+            document.getElementById('modal-category').innerText = product.category;[cite: 12]
+            document.getElementById('modal-name').innerText = product.name;[cite: 12]
+            document.getElementById('modal-price').innerText = `NT$ ${product.price}`;[cite: 12]
+            document.getElementById('modal-desc').innerText = product.description || '無使用說明';[cite: 12]
+            document.getElementById('modal-status').innerText = '狀態：上架中';[cite: 12]
+            document.getElementById('detail-modal').classList.remove('hidden');[cite: 12]
         };
 
         window.closeDetailModal = function() {
-            document.getElementById('detail-modal').classList.add('hidden');
-            currentModalProductId = null;
+            document.getElementById('detail-modal').classList.add('hidden');[cite: 12]
+            currentModalProductId = null;[cite: 12]
         };
 
         window.redeemProduct = async function() {
-            if (!currentModalProductId) return;
-            const product = allProducts.find(p => p.id === currentModalProductId);
-            if (!product) return;
+            if (!currentModalProductId) return;[cite: 12]
+            const product = allProducts.find(p => p.id === currentModalProductId);[cite: 12]
+            if (!product) return;[cite: 12]
         
-            if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
+            if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;[cite: 12]
         
             try {
+                const memberRef = doc(db, "users", "m1");[cite: 12]
+                
                 if (myCoin < product.price) {
-                    alert('您的豬幣餘額不足，無法兌換此商品！');
-                    return;
+                    alert('您的豬幣餘額不足，無法兌換此商品！');[cite: 12]
+                    return;[cite: 12]
                 }
         
-                const productRef = doc(db, "products", currentModalProductId);
+                const productRef = doc(db, "products", currentModalProductId);[cite: 12]
                 await updateDoc(productRef, { 
                     buyer: '尊榮豬友 (自己)',
                     maskedImage: product.originalImage || product.maskedImage 
-                });
+                });[cite: 12]
                 
-                myCoin -= product.price;
-                mockMembers[0].coin = myCoin;
-                document.getElementById('my-coin-display').innerText = myCoin;
+                myCoin -= product.price;[cite: 12]
+                mockMembers[0].coin = myCoin;[cite: 12]
+                document.getElementById('my-coin-display').innerText = myCoin;[cite: 12]
         
                 await addDoc(collection(db, "transactions"), {
                     type: 'redeem',
@@ -494,15 +496,15 @@
                     price: product.price,
                     buyer: '尊榮豬友 (自己)',
                     createdAt: serverTimestamp()
-                });
+                });[cite: 12]
         
-                alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩，交易明細已同步至雲端。');
-                window.closeDetailModal();
-                await loadProducts();
-                window.switchTab('profile');
+                alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩，交易明細已同步至雲端。');[cite: 12]
+                window.closeDetailModal();[cite: 12]
+                await loadProducts();[cite: 12]
+                window.switchTab('profile');[cite: 12]
             } catch (error) {
-                console.error("兌換與金流寫入失敗：", error);
-                alert('兌換失敗，請檢查網路或資料庫權限');
+                console.error("兌換與金流寫入失敗：", error);[cite: 12]
+                alert('兌換失敗，請檢查網路或資料庫權限');[cite: 12]
             }
         };
     </script>
@@ -510,158 +512,158 @@
 <body class="bg-gray-100 min-h-screen pb-20">
 
     <!-- 頂部導航列 -->
-    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex items-center justify-between gap-3 max-w-4xl mx-auto">
-        <div class="relative flex-1">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
-            <input type="text" oninput="handleSearch(event)" placeholder="搜尋商品" class="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex items-center justify-between gap-3 max-w-4xl mx-auto">[cite: 12]
+        <div class="relative flex-1">[cite: 12]
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>[cite: 12]
+            <input type="text" oninput="handleSearch(event)" placeholder="搜尋商品" class="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">[cite: 12]
         </div>
-        <div class="flex items-center gap-2">
-            <button onclick="switchTab('admin')" class="px-3 py-1.5 bg-gray-800 text-white rounded-full text-xs font-bold hover:bg-gray-900 transition" title="管理員後臺">⚙️ 管理</button>
-            <button onclick="switchTab('upload')" class="w-10 h-10 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-xl hover:bg-orange-600 transition shadow" title="新增上架">+</button>
-            <button onclick="switchTab('chat')" class="w-10 h-10 bg-gray-100 text-orange-500 rounded-full flex items-center justify-center text-xl hover:bg-gray-200 transition" title="聊天室">💬</button>
+        <div class="flex items-center gap-2">[cite: 12]
+            <button onclick="switchTab('admin')" class="px-3 py-1.5 bg-gray-800 text-white rounded-full text-xs font-bold hover:bg-gray-900 transition" title="管理員後臺">⚙️ 管理</button>[cite: 12]
+            <button onclick="switchTab('upload')" class="w-10 h-10 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-xl hover:bg-orange-600 transition shadow" title="新增上架">+</button>[cite: 12]
+            <button onclick="switchTab('chat')" class="w-10 h-10 bg-gray-100 text-orange-500 rounded-full flex items-center justify-center text-xl hover:bg-gray-200 transition" title="聊天室">💬</button>[cite: 12]
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto p-4 space-y-4">
+    <main class="max-w-4xl mx-auto p-4 space-y-4">[cite: 12]
 
         <!-- 1. 市集瀏覽分頁 -->
-        <div id="view-market" class="space-y-4">
-            <div class="bg-gradient-to-r from-teal-400 to-teal-500 text-white p-5 rounded-2xl shadow">
-                <h2 class="text-center font-bold text-lg mb-1">小 豬 公 告</h2>
-                <p class="text-xs text-center text-teal-100">請經常在小豬市集交易的豬友們，點擊本公告閱讀管理規範，以保護自身權益。</p>
+        <div id="view-market" class="space-y-4">[cite: 12]
+            <div class="bg-gradient-to-r from-teal-400 to-teal-500 text-white p-5 rounded-2xl shadow">[cite: 12]
+                <h2 class="text-center font-bold text-lg mb-1">小 豬 公 告</h2>[cite: 12]
+                <p class="text-xs text-center text-teal-100">請經常在小豬市集交易的豬友們，點擊本公告閱讀管理規範，以保護自身權益。</p>[cite: 12]
             </div>
 
-            <div class="grid grid-cols-4 gap-2">
-                <button type="button" id="cat-貼圖" onclick="setCategory('貼圖')" class="py-2.5 bg-orange-500 text-white rounded-xl font-medium text-sm transition shadow-sm">貼圖</button>
-                <button type="button" id="cat-遊戲" onclick="setCategory('遊戲')" class="py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition">遊戲</button>
-                <button type="button" id="cat-超商" onclick="setCategory('超商')" class="py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition">超商</button>
-                <button type="button" id="cat-其它" onclick="setCategory('其它')" class="py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition">其它</button>
+            <div class="grid grid-cols-4 gap-2">[cite: 12]
+                <button type="button" id="cat-貼圖" onclick="setCategory('貼圖')" class="py-2.5 bg-orange-500 text-white rounded-xl font-medium text-sm transition shadow-sm">貼圖</button>[cite: 12]
+                <button type="button" id="cat-遊戲" onclick="setCategory('遊戲')" class="py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition">遊戲</button>[cite: 12]
+                <button type="button" id="cat-超商" onclick="setCategory('超商')" class="py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition">超商</button>[cite: 12]
+                <button type="button" id="cat-其它" onclick="setCategory('其它')" class="py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-300 transition">其它</button>[cite: 12]
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm">
-                <h3 class="font-bold text-gray-800 mb-3">商品展示牆</h3>
-                <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm">[cite: 12]
+                <h3 class="font-bold text-gray-800 mb-3">商品展示牆</h3>[cite: 12]
+                <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>[cite: 12]
             </div>
         </div>
 
         <!-- 2. 上架商品分頁 -->
-        <div id="view-upload" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
-            <div class="flex items-center justify-between border-b pb-3">
-                <h2 class="text-lg font-bold text-gray-800">商品上架與序號遮蔽</h2>
-                <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>
+        <div id="view-upload" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">[cite: 12]
+            <div class="flex items-center justify-between border-b pb-3">[cite: 12]
+                <h2 class="text-lg font-bold text-gray-800">商品上架與序號遮蔽</h2>[cite: 12]
+                <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>[cite: 12]
             </div>
             
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">商品序號圖片</label>
-                <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"/>
+            <div>[cite: 12]
+                <label class="block text-sm font-medium text-gray-700 mb-1">商品序號圖片</label>[cite: 12]
+                <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"/>[cite: 12]
             </div>
 
-            <div id="preview-container" class="hidden border border-dashed border-gray-300 p-4 rounded-xl text-center space-y-2">
-                <p class="text-xs text-gray-500">請在下方圖片上用紅筆塗鴉遮蔽敏感序號：</p>
-                <div class="relative inline-block max-w-full overflow-hidden border rounded">
-                    <canvas id="mask-canvas" class="cursor-crosshair max-h-64 block mx-auto"></canvas>
+            <div id="preview-container" class="hidden border border-dashed border-gray-300 p-4 rounded-xl text-center space-y-2">[cite: 12]
+                <p class="text-xs text-gray-500">請在下方圖片上用紅筆塗鴉遮蔽敏感序號：</p>[cite: 12]
+                <div class="relative inline-block max-w-full overflow-hidden border rounded">[cite: 12]
+                    <canvas id="mask-canvas" class="cursor-crosshair max-h-64 block mx-auto"></canvas>[cite: 12]
                 </div>
-                <div class="flex justify-center gap-2 pt-2">
-                    <button onclick="undoCanvas()" class="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-300 font-medium">↶ 上一步</button>
-                    <button onclick="clearImage()" class="text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-200 font-medium">重置圖片</button>
+                <div class="flex justify-center gap-2 pt-2">[cite: 12]
+                    <button onclick="undoCanvas()" class="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-300 font-medium">↶ 上一步</button>[cite: 12]
+                    <button onclick="clearImage()" class="text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-200 font-medium">重置圖片</button>[cite: 12]
                 </div>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">商品類別</label>
-                <select id="upload-category" class="w-full border rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500" onchange="selectedCategory=this.value;">
-                    <option value="貼圖">貼圖</option>
-                    <option value="遊戲">遊戲</option>
-                    <option value="超商">超商</option>
-                    <option value="其它">其它</option>
+            <div>[cite: 12]
+                <label class="block text-sm font-medium text-gray-700 mb-1">商品類別</label>[cite: 12]
+                <select id="upload-category" class="w-full border rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500" onchange="selectedCategory=this.value;">[cite: 12]
+                    <option value="貼圖">貼圖</option>[cite: 12]
+                    <option value="遊戲">遊戲</option>[cite: 12]
+                    <option value="超商">超商</option>[cite: 12]
+                    <option value="其它">其它</option>[cite: 12]
                 </select>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">商品名稱</label>
-                <input type="text" id="prod-name" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="請輸入商品名稱">
+            <div>[cite: 12]
+                <label class="block text-sm font-medium text-gray-700 mb-1">商品名稱</label>[cite: 12]
+                <input type="text" id="prod-name" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="請輸入商品名稱">[cite: 12]
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">商品價格 (100 - 30000)</label>
-                <input type="number" id="prod-price" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="100">
+            <div>[cite: 12]
+                <label class="block text-sm font-medium text-gray-700 mb-1">商品價格 (100 - 30000)</label>[cite: 12]
+                <input type="number" id="prod-price" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="100">[cite: 12]
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">使用說明</label>
-                <textarea id="prod-desc" rows="3" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="請輸入說明"></textarea>
+            <div>[cite: 12]
+                <label class="block text-sm font-medium text-gray-700 mb-1">使用說明</label>[cite: 12]
+                <textarea id="prod-desc" rows="3" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="請輸入說明"></textarea>[cite: 12]
             </div>
 
-            <button id="submit-btn" onclick="submitProduct()" class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition shadow">確認上架</button>
+            <button id="submit-btn" onclick="submitProduct()" class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition shadow">確認上架</button>[cite: 12]
         </div>
 
         <!-- 3. 聊天畫面分頁 -->
-        <div id="view-chat" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
-            <div class="flex items-center justify-between border-b pb-3">
-                <h2 class="text-lg font-bold text-gray-800">小豬市集聊天室</h2>
-                <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>
+        <div id="view-chat" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">[cite: 12]
+            <div class="flex items-center justify-between border-b pb-3">[cite: 12]
+                <h2 class="text-lg font-bold text-gray-800">小豬市集聊天室</h2>[cite: 12]
+                <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>[cite: 12]
             </div>
-            <div class="h-64 flex flex-col items-center justify-center text-gray-400 bg-gray-50 rounded-xl">
-                <p>💬 聊天與客服功能建置中...</p>
+            <div class="h-64 flex flex-col items-center justify-center text-gray-400 bg-gray-50 rounded-xl">[cite: 12]
+                <p>💬 聊天與客服功能建置中...</p>[cite: 12]
             </div>
         </div>
 
         <!-- 4. 豬幣分頁 -->
-        <div id="view-coin" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
-            <h2 class="text-lg font-bold text-gray-800 border-b pb-3">我的豬幣錢包</h2>
-            <div class="bg-gradient-to-r from-orange-400 to-orange-500 text-white p-6 rounded-2xl shadow flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-orange-100">可用豬幣餘額</p>
-                    <p class="text-3xl font-bold mt-1"><span id="my-coin-display">1,280</span> <span class="text-sm font-normal">P</span></p>
+        <div id="view-coin" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">[cite: 12]
+            <h2 class="text-lg font-bold text-gray-800 border-b pb-3">我的豬幣錢包</h2>[cite: 12]
+            <div class="bg-gradient-to-r from-orange-400 to-orange-500 text-white p-6 rounded-2xl shadow flex items-center justify-between">[cite: 12]
+                <div>[cite: 12]
+                    <p class="text-xs text-orange-100">可用豬幣餘額</p>[cite: 12]
+                    <p class="text-3xl font-bold mt-1"><span id="my-coin-display">1,280</span> <span class="text-sm font-normal">P</span></p>[cite: 12]
                 </div>
-                <button onclick="alert('充值功能開發中！')" class="bg-white text-orange-600 px-4 py-2 rounded-xl font-bold text-sm shadow hover:bg-orange-50 transition">充值 / 兌換</button>
+                <button onclick="alert('充值功能開發中！')" class="bg-white text-orange-600 px-4 py-2 rounded-xl font-bold text-sm shadow hover:bg-orange-50 transition">充值 / 兌換</button>[cite: 12]
             </div>
         </div>
 
         <!-- 5. 我的分頁 -->
-        <div id="view-profile" class="hidden space-y-4">
-            <div class="bg-white p-6 rounded-2xl shadow-sm flex items-center gap-4">
-                <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">豬</div>
-                <div>
-                    <h2 class="text-lg font-bold text-gray-800">尊榮豬友</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">ID: pig_user_888</p>
+        <div id="view-profile" class="hidden space-y-4">[cite: 12]
+            <div class="bg-white p-6 rounded-2xl shadow-sm flex items-center gap-4">[cite: 12]
+                <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">豬</div>[cite: 12]
+                <div>[cite: 12]
+                    <h2 class="text-lg font-bold text-gray-800">尊榮豬友</h2>[cite: 12]
+                    <p class="text-xs text-gray-500 mt-0.5">ID: pig_user_888</p>[cite: 12]
                 </div>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-                <h3 class="font-bold text-gray-800 border-b pb-2">我已兌換的禮品區 (已解鎖序號)</h3>
-                <div id="my-redeemed-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">[cite: 12]
+                <h3 class="font-bold text-gray-800 border-b pb-2">我已兌換的禮品區 (已解鎖序號)</h3>[cite: 12]
+                <div id="my-redeemed-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>[cite: 12]
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-                <h3 class="font-bold text-gray-800 border-b pb-2">金流與交易明細紀錄</h3>
-                <div id="transaction-list" class="space-y-2"></div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">[cite: 12]
+                <h3 class="font-bold text-gray-800 border-b pb-2">金流與交易明細紀錄</h3>[cite: 12]
+                <div id="transaction-list" class="space-y-2"></div>[cite: 12]
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-                <h3 class="font-bold text-gray-800 border-b pb-2">我上架的商品紀錄</h3>
-                <div id="my-product-list" class="space-y-2"></div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">[cite: 12]
+                <h3 class="font-bold text-gray-800 border-b pb-2">我上架的商品紀錄</h3>[cite: 12]
+                <div id="my-product-list" class="space-y-2"></div>[cite: 12]
             </div>
         </div>
 
         <!-- 6. 管理員後臺分頁 -->
-        <div id="view-admin" class="hidden space-y-4">
-            <div class="bg-white p-6 rounded-2xl shadow-sm space-y-4">
-                <div class="flex items-center justify-between border-b pb-3">
-                    <h2 class="text-lg font-bold text-gray-800">⚙️ 管理員營運後臺</h2>
-                    <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>
+        <div id="view-admin" class="hidden space-y-4">[cite: 12]
+            <div class="bg-white p-6 rounded-2xl shadow-sm space-y-4">[cite: 12]
+                <div class="flex items-center justify-between border-b pb-3">[cite: 12]
+                    <h2 class="text-lg font-bold text-gray-800">⚙️ 管理員營運後臺</h2>[cite: 12]
+                    <button onclick="switchTab('market')" class="text-sm text-gray-500 hover:text-gray-700">返回市集</button>[cite: 12]
                 </div>
 
                 <!-- 待審核區 -->
-                <div class="space-y-2">
-                    <h3 class="font-bold text-sm text-gray-700">待審核商品清單</h3>
-                    <div id="admin-pending-list" class="space-y-2"></div>
+                <div class="space-y-2">[cite: 12]
+                    <h3 class="font-bold text-sm text-gray-700">待審核商品清單</h3>[cite: 12]
+                    <div id="admin-pending-list" class="space-y-2"></div>[cite: 12]
                 </div>
 
                 <!-- 成員與資產管理區 -->
-                <div class="space-y-2 pt-4 border-t">
-                    <h3 class="font-bold text-sm text-gray-700">成員與金幣餘額總覽</h3>
-                    <div id="admin-member-list" class="space-y-2"></div>
+                <div class="space-y-2 pt-4 border-t">[cite: 12]
+                    <h3 class="font-bold text-sm text-gray-700">成員與金幣餘額總覽</h3>[cite: 12]
+                    <div id="admin-member-list" class="space-y-2"></div>[cite: 12]
                 </div>
             </div>
         </div>
@@ -669,39 +671,39 @@
     </main>
 
     <!-- 底部導航列 -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t py-2 px-6 flex justify-around items-center z-40 max-w-4xl mx-auto shadow-lg">
-        <button onclick="switchTab('coin')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
-            <span class="text-xl">ⓟ</span>
-            <span>豬幣</span>
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t py-2 px-6 flex justify-around items-center z-40 max-w-4xl mx-auto shadow-lg">[cite: 12]
+        <button onclick="switchTab('coin')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">[cite: 12]
+            <span class="text-xl">ⓟ</span>[cite: 12]
+            <span>豬幣</span>[cite: 12]
         </button>
-        <button onclick="switchTab('market')" class="flex flex-col items-center text-orange-500 font-medium text-xs">
-            <span class="text-xl">🏠</span>
-            <span>市集</span>
+        <button onclick="switchTab('market')" class="flex flex-col items-center text-orange-500 font-medium text-xs">[cite: 12]
+            <span class="text-xl">🏠</span>[cite: 12]
+            <span>市集</span>[cite: 12]
         </button>
-        <button onclick="switchTab('upload')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
-            <span class="text-xl">🎁</span>
-            <span>獎品</span>
+        <button onclick="switchTab('upload')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">[cite: 12]
+            <span class="text-xl">🎁</span>[cite: 12]
+            <span>獎品</span>[cite: 12]
         </button>
-        <button onclick="switchTab('profile')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
-            <span class="text-xl">👤</span>
-            <span>我的</span>
+        <button onclick="switchTab('profile')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">[cite: 12]
+            <span class="text-xl">👤</span>[cite: 12]
+            <span>我的</span>[cite: 12]
         </button>
     </nav>
 
     <!-- 商品詳情 Modal 視窗 -->
-    <div id="detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
-            <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-            <img id="modal-img" class="w-full h-64 object-cover rounded-xl" />
-            <div class="flex items-center justify-between">
-                <span id="modal-category" class="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-medium"></span>
-                <span id="modal-status" class="text-xs text-gray-500"></span>
+    <div id="detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">[cite: 12]
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">[cite: 12]
+            <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>[cite: 12]
+            <img id="modal-img" class="w-full h-64 object-cover rounded-xl" />[cite: 12]
+            <div class="flex items-center justify-between">[cite: 12]
+                <span id="modal-category" class="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-medium"></span>[cite: 12]
+                <span id="modal-status" class="text-xs text-gray-500"></span>[cite: 12]
             </div>
-            <h3 id="modal-name" class="text-xl font-bold text-gray-800"></h3>
-            <p id="modal-desc" class="text-gray-600 text-sm bg-gray-50 p-3 rounded-lg"></p>
-            <div class="flex items-center justify-between pt-2 border-t">
-                <span id="modal-price" class="text-red-500 font-bold text-2xl"></span>
-                <button onclick="redeemProduct()" class="bg-orange-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-orange-600 transition shadow">兌換商品</button>
+            <h3 id="modal-name" class="text-xl font-bold text-gray-800"></h3>[cite: 12]
+            <p id="modal-desc" class="text-gray-600 text-sm bg-gray-50 p-3 rounded-lg"></p>[cite: 12]
+            <div class="flex items-center justify-between pt-2 border-t">[cite: 12]
+                <span id="modal-price" class="text-red-500 font-bold text-2xl"></span>[cite: 12]
+                <button onclick="redeemProduct()" class="bg-orange-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-orange-600 transition shadow">兌換商品</button>[cite: 12]
             </div>
         </div>
     </div>
