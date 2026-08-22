@@ -8,7 +8,7 @@
     <!-- 引入 Firebase App 與 Firestore SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateLink, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCq2RtHFB1R_uXbgrAJQ2GWRxAMZS5ij8E",
@@ -211,7 +211,7 @@
                     price: price,
                     description: description,
                     maskedImage: maskedImageBase64,
-                    status: 'pending', // 預設審核中
+                    status: 'pending',
                     owner: '尊榮豬友 (自己)',
                     createdAt: serverTimestamp()
                 });
@@ -245,7 +245,6 @@
             }
         }
 
-        // 只渲染狀態為 active (已上架) 的商品到首頁展示牆
         function renderProducts() {
             const container = document.getElementById('product-list');
             let filtered = allProducts.filter(p => p.category === selectedCategory && p.status === 'active');
@@ -302,12 +301,10 @@
             `).join('');
         }
 
-        // 渲染管理員後臺
         window.renderAdminDashboard = function() {
             const pendingContainer = document.getElementById('admin-pending-list');
             const memberContainer = document.getElementById('admin-member-list');
 
-            // 1. 待審核商品清單
             const pendingProducts = allProducts.filter(p => p.status === 'pending');
             if (pendingProducts.length === 0) {
                 pendingContainer.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前沒有需要審核的商品</div>`;
@@ -328,7 +325,6 @@
                 `).join('');
             }
 
-            // 2. 成員資產與清單檢視
             memberContainer.innerHTML = mockMembers.map(m => `
                 <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border">
                     <div>
@@ -343,7 +339,6 @@
             `).join('');
         };
 
-        // 管理員通過審核
         window.approveProduct = async function(id) {
             try {
                 const docRef = doc(db, "products", id);
