@@ -272,6 +272,39 @@
             }
         }
 
+        async function loadTransactions() {
+            try {
+                const q = query(collection(db, "transactions"), orderBy("createdAt", "desc"));
+                const snapshot = await getDocs(q);
+                const txList = [];
+                snapshot.forEach(doc => {
+                    txList.push({ id: doc.id, ...doc.data() });
+                });
+        
+                const container = document.getElementById('transaction-list');
+                if (!container) return;
+        
+                if (txList.length === 0) {
+                    container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無交易明細</div>`;
+                    return;
+                }
+        
+                container.innerHTML = txList.map(tx => `
+                    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border text-sm">
+                        <div>
+                            <h4 class="font-bold text-gray-800">${tx.productName}</h4>
+                            <p class="text-xs text-gray-500">買家：${tx.buyer} | 類型：${tx.type === 'redeem' ? '商品兌換' : tx.type}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-red-500 font-bold">-${tx.price} P</span>
+                        </div>
+                    </div>
+                `).join('');
+            } -> catch (error) {
+                console.error("載入交易明細失敗：", error);
+            }
+        }
+
         function renderProducts() {
             const container = document.getElementById('product-list');
             // 僅顯示狀態為 active 且尚未被兌換的商品
