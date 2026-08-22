@@ -90,6 +90,25 @@
             renderProducts();
         };
 
+        // 九宮格快捷按鈕點擊事件處理
+        window.handleGridAction = function(actionType) {
+            if (actionType === 'market') {
+                switchTab('market');
+            } else if (actionType === 'upload') {
+                switchTab('upload');
+            } else if (actionType === 'coin') {
+                switchTab('coin');
+            } else if (actionType === 'profile') {
+                switchTab('profile');
+            } else if (actionType === 'admin') {
+                switchTab('admin');
+            } else if (actionType === 'chat') {
+                switchTab('chat');
+            } else {
+                alert(`點擊了快捷功能：${actionType}`);
+            }
+        };
+
         window.handleImageUpload = function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -520,6 +539,37 @@
             <div class="bg-gradient-to-r from-teal-400 to-teal-500 text-white p-5 rounded-2xl shadow">
                 <h2 class="text-center font-bold text-lg mb-1">小 豬 公 告</h2>
                 <p class="text-xs text-center text-teal-100">請經常在小豬市集交易的豬友們，點擊本公告閱讀管理規範，以保護自身權益。</p>
+            </div>
+
+            <!-- 九宮格 / 十二宮格功能按鈕區 -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm">
+                <h3 class="font-bold text-gray-800 mb-3 text-sm">快捷功能</h3>
+                <div class="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                    <button onclick="handleGridAction('market')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
+                        <span class="text-2xl mb-1 group-hover:scale-110 transition">🏠</span>
+                        <span class="text-xs text-gray-700 font-medium">市集首頁</span>
+                    </button>
+                    <button onclick="handleGridAction('upload')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
+                        <span class="text-2xl mb-1 group-hover:scale-110 transition">🎁</span>
+                        <span class="text-xs text-gray-700 font-medium">商品上架</span>
+                    </button>
+                    <button onclick="handleGridAction('coin')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
+                        <span class="text-2xl mb-1 group-hover:scale-110 transition">ⓟ</span>
+                        <span class="text-xs text-gray-700 font-medium">我的豬幣</span>
+                    </button>
+                    <button onclick="handleGridAction('profile')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
+                        <span class="text-2xl mb-1 group-hover:scale-110 transition">👤</span>
+                        <span class="text-xs text-gray-700 font-medium">個人專區</span>
+                    </button>
+                    <button onclick="handleGridAction('chat')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
+                        <span class="text-2xl mb-1 group-hover:scale-110 transition">💬</span>
+                        <span class="text-xs text-gray-700 font-medium">聊天客服</span>
+                    </button>
+                    <button onclick="handleGridAction('admin')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
+                        <span class="text-2xl mb-1 group-hover:scale-110 transition">⚙️</span>
+                        <span class="text-xs text-gray-700 font-medium">管理後臺</span>
+                    </button>
+                </div>
             </div>
 
             <div class="grid grid-cols-4 gap-2">
