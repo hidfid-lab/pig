@@ -64,6 +64,7 @@
 
             if (tabName === 'profile') {
                 renderMyProducts();
+                loadTransactions(); // 加上這行讓切到個人頁面時自動載入金流
             } else if (tabName === 'admin') {
                 renderAdminDashboard();
             } else if (tabName === 'coin') {
@@ -639,6 +640,11 @@
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
                 <h3 class="font-bold text-gray-800 border-b pb-2">我已兌換的禮品區 (已解鎖序號)</h3>
                 <div id="my-redeemed-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
+                <h3 class="font-bold text-gray-800 border-b pb-2">金流與交易明細紀錄</h3>
+                <div id="transaction-list" class="space-y-2"></div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
