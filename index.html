@@ -26,9 +26,9 @@
         let allProducts = [];
         let myCoin = 1280;
         let mockMembers = [
-            { id: 'm1', name: '尊榮豬友 (自己)', coin: 1280, handle: 'pig_user_888' },
+            { id: 'm1', name: '管理員 (自己)', coin: 1280, handle: 'pig_user_888' },
             { id: 'm2', name: '阿明股東', coin: 4500, handle: 'ming_99' },
-            { id: 'm3', name: '小紅豬粉', coin: 320, handle: 'hong_pig' }
+            { id: 'm3', name: '小紅豬', coin: 320, handle: 'hong_pig' }
         ];
         let canvas, ctx, isDrawing = false, originalImage = null, originalImageBase64 = null;
         let drawHistory = [];
@@ -252,7 +252,7 @@
                     maskedImage: maskedImageBase64,
                     originalImage: originalImageBase64,
                     status: 'pending',
-                    owner: '尊榮豬友 (自己)',
+                    owner: '管理員 (自己)',
                     buyer: null,
                     createdAt: serverTimestamp()
                 });
@@ -368,7 +368,7 @@
         // 禮品區：條列式呈現（不含圖片），點擊後進入詳細資料與圖片
         function renderMyRedeemedList() {
             const container = document.getElementById('my-redeemed-list');
-            const myRedeemed = allProducts.filter(p => p.buyer === '尊榮豬友 (自己)');
+            const myRedeemed = allProducts.filter(p => p.buyer === '管理員 (自己)');
             
             if (myRedeemed.length === 0) {
                 container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無已兌換的禮品</div>`;
@@ -380,7 +380,7 @@
                     <div>
                         <span class="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-medium">已解鎖序號</span>
                         <h4 class="font-bold text-gray-800 mt-1">${p.name}</h4>
-                        <p class="text-xs text-gray-500 mt-1">已扣除 ${p.price} 豬幣</p>
+                        <p class="text-xs text-gray-500 mt-1">已扣除 ${p.price} 蓮霧</p>
                     </div>
                     <span class="text-gray-400">&gt;</span>
                 </div>
@@ -390,7 +390,7 @@
         // 銷售區：我上架的商品紀錄
         function renderMySalesList() {
             const container = document.getElementById('my-sales-list');
-            const myUploaded = allProducts.filter(p => p.owner === '尊榮豬友 (自己)');
+            const myUploaded = allProducts.filter(p => p.owner === '管理員 (自己)');
 
             if (myUploaded.length === 0) {
                 container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無上架紀錄</div>`;
@@ -424,7 +424,7 @@
                             <img src="${p.maskedImage}" class="w-12 h-12 object-cover rounded-lg">
                             <div>
                                 <h4 class="font-bold text-sm text-gray-800">${p.name} (${p.category})</h4>
-                                <p class="text-xs text-gray-500">價格: NT$ ${p.price} | 上架者: ${p.owner || '尊榮豬友'}</p>
+                                <p class="text-xs text-gray-500">價格: NT$ ${p.price} | 上架者: ${p.owner || '管理員'}</p>
                             </div>
                         </div>
                         <button onclick="approveProduct('${p.id}')" class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-600 transition">通過審核</button>
@@ -451,7 +451,7 @@
 
         window.adjustMemberCoin = async function(index) {
             const member = mockMembers[index];
-            const amountStr = prompt(`請輸入要為「${member.name}」增減的豬幣數量（發放請直接輸入正數，扣除請輸入負數）：`, "100");
+            const amountStr = prompt(`請輸入要為「${member.name}」增減的蓮霧數量（發放請直接輸入正數，扣除請輸入負數）：`, "100");
             if (amountStr === null) return;
             const amount = Number(amountStr);
             if (isNaN(amount)) {
@@ -462,7 +462,7 @@
             if (index === 0) {
                 myCoin = member.coin;
             }
-            alert(`已成功更新「${member.name}」的豬幣餘額！目前餘額：${member.coin} P`);
+            alert(`已成功更新「${member.name}」的蓮霧餘額！目前餘額：${member.coin} P`);
             window.renderAdminDashboard();
         };
 
@@ -501,17 +501,17 @@
             const product = allProducts.find(p => p.id === currentModalProductId);
             if (!product) return;
         
-            if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
+            if (!confirm(`確定要使用 ${product.price} 蓮霧兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
         
             try {
                 if (myCoin < product.price) {
-                    alert('您的豬幣餘額不足，無法兌換此商品！');
+                    alert('您的蓮霧餘額不足，無法兌換此商品！');
                     return;
                 }
         
                 const productRef = doc(db, "products", currentModalProductId);
                 await updateDoc(productRef, { 
-                    buyer: '尊榮豬友 (自己)',
+                    buyer: '管理員 (自己)',
                     maskedImage: product.originalImage || product.maskedImage 
                 });
                 
@@ -524,7 +524,7 @@
                     productId: product.id,
                     productName: product.name,
                     price: -product.price,
-                    buyer: '尊榮豬友 (自己)',
+                    buyer: '管理員 (自己)',
                     createdAt: serverTimestamp()
                 });
         
@@ -558,8 +558,8 @@
         <!-- 市集首頁 (已移除快捷鍵按鈕區) -->
         <div id="view-market" class="space-y-4">
             <div class="bg-gradient-to-r from-teal-400 to-teal-500 text-white p-5 rounded-2xl shadow">
-                <h2 class="text-center font-bold text-lg mb-1">小 豬 公 告</h2>
-                <p class="text-xs text-center text-teal-100">請經常在小努吃蓮霧交易的豬友們，點擊本公告閱讀管理規範，以保護自身權益。</p>
+                <h2 class="text-center font-bold text-lg mb-1">公 告</h2>
+                <p class="text-xs text-center text-teal-100">請經常在小努吃蓮霧交易的蓮霧們，點擊本公告閱讀管理規範，以保護自身權益。</p>
             </div>
 
             <div class="grid grid-cols-4 gap-2">
@@ -636,10 +636,10 @@
         </div>
 
         <div id="view-coin" class="hidden bg-white p-6 rounded-2xl shadow-sm space-y-4">
-            <h2 class="text-lg font-bold text-gray-800 border-b pb-3">我的豬幣錢包</h2>
+            <h2 class="text-lg font-bold text-gray-800 border-b pb-3">我的蓮霧錢包</h2>
             <div class="bg-gradient-to-r from-orange-400 to-orange-500 text-white p-6 rounded-2xl shadow flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-orange-100">可用豬幣餘額</p>
+                    <p class="text-xs text-orange-100">可用蓮霧餘額</p>
                     <p class="text-3xl font-bold mt-1"><span id="my-coin-display">1,280</span> <span class="text-sm font-normal">P</span></p>
                 </div>
                 <button onclick="alert('充值功能開發中！')" class="bg-white text-orange-600 px-4 py-2 rounded-xl font-bold text-sm shadow hover:bg-orange-50 transition">充值 / 兌換</button>
@@ -649,9 +649,9 @@
         <!-- 「我的」專區 -->
         <div id="view-profile" class="hidden space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm flex items-center gap-4">
-                <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">豬</div>
+                <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">蓮霧</div>
                 <div>
-                    <h2 class="text-lg font-bold text-gray-800">尊榮豬友</h2>
+                    <h2 class="text-lg font-bold text-gray-800">管理員</h2>
                     <p class="text-xs text-gray-500 mt-0.5">ID: pig_user_888</p>
                 </div>
             </div>
@@ -724,7 +724,7 @@
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t py-2 px-6 flex justify-around items-center z-40 max-w-4xl mx-auto shadow-lg">
         <button onclick="switchTab('coin')" class="flex flex-col items-center text-gray-400 hover:text-orange-500 font-medium text-xs">
             <span class="text-xl">ⓟ</span>
-            <span>豬幣</span>
+            <span>蓮霧</span>
         </button>
         <button onclick="switchTab('market')" class="flex flex-col items-center text-orange-500 font-medium text-xs">
             <span class="text-xl">🏠</span>
