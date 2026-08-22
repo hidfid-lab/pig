@@ -465,55 +465,46 @@
         };
 
         window.redeemProduct = async function() {
-        if (!currentModalProductId) return;
-        const product = allProducts.find(p => p.id === currentModalProductId);
-        if (!product) return;
-    
-        if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
-    
-        try {
-            // 1. 從 Firestore 讀取當前登入會員（例如 ID: m1 或目前身分）的最新資料
-            // 假設我們在 Firestore 中有一個 users 集合來存放每位會員的資料
-            const memberRef = doc(db, "users", "m1"); 
-            // 或者是直接從前端模擬的 mockMembers 寫入雲端，此處以 Firestore 查詢為例
-            
-            // 檢查本地或雲端餘額是否充足（此處以全域變數 myCoin 為例，若改為雲端讀取可改成從 DB 取得）
-            if (myCoin < product.price) {
-                alert('您的豬幣餘額不足，無法兌換此商品！');
-                return;
+            if (!currentModalProductId) return;
+            const product = allProducts.find(p => p.id === currentModalProductId);
+            if (!product) return;
+        
+            if (!confirm(`確定要使用 ${product.price} 豬幣兌換此商品嗎？兌換後將直接解鎖序號圖片！`)) return;
+        
+            try {
+                if (myCoin < product.price) {
+                    alert('您的豬幣餘額不足，無法兌換此商品！');
+                    return;
+                }
+        
+                const productRef = doc(db, "products", currentModalProductId);
+                await updateDoc(productRef, { 
+                    buyer: '尊榮豬友 (自己)',
+                    maskedImage: product.originalImage || product.maskedImage 
+                });
+                
+                myCoin -= product.price;
+                mockMembers[0].coin = myCoin;
+                document.getElementById('my-coin-display').innerText = myCoin;
+        
+                await addDoc(collection(db, "transactions"), {
+                    type: 'redeem',
+                    productId: product.id,
+                    productName: product.name,
+                    price: product.price,
+                    buyer: '尊榮豬友 (自己)',
+                    createdAt: serverTimestamp()
+                });
+        
+                alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩，交易明細已同步至雲端。');
+                window.closeDetailModal();
+                await loadProducts();
+                window.switchTab('profile');
+            } catch (error) {
+                console.error("兌換與金流寫入失敗：", error);
+                alert('兌換失敗，請檢查網路或資料庫權限');
             }
-    
-            // 2. 更新商品狀態：記錄買家並將畫面圖片替換為原始未遮罩圖
-            const productRef = doc(db, "products", currentModalProductId);
-            await updateDoc(productRef, { 
-                buyer: '尊榮豬友 (自己)',
-                maskedImage: product.originalImage || product.maskedImage 
-            });
-            
-            // 3. 計算扣款後的最新餘額
-            myCoin -= product.price;
-            mockMembers[0].coin = myCoin;
-            document.getElementById('my-coin-display').innerText = myCoin;
-    
-            // 4. 同步寫入金流交易記錄至 Firestore 的 transactions 集合
-            await addDoc(collection(db, "transactions"), {
-                type: 'redeem',
-                productId: product.id,
-                productName: product.name,
-                price: product.price,
-                buyer: '尊榮豬友 (自己)',
-                createdAt: serverTimestamp()
-            });
-    
-            alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩，交易明細已同步至雲端。');
-            window.closeDetailModal();
-            await loadProducts(); // 重新載入商品清單
-            window.switchTab('profile'); // 自動切換至我的頁面
-        } catch (error) {
-            console.error("兌換與金流寫入失敗：", error);
-            alert('兌換失敗，請檢查網路或資料庫權限');
-        }
-    };
+        };
     </script>
 </head>
 <body class="bg-gray-100 min-h-screen pb-20">
