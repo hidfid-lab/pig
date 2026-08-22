@@ -61,12 +61,30 @@
             if (target) target.classList.remove('hidden');
 
             if (tabName === 'profile') {
-                renderMyProducts();
-                loadTransactions();
+                window.showProfileSubTab('menu');
             } else if (tabName === 'admin') {
                 renderAdminDashboard();
             } else if (tabName === 'coin') {
                 document.getElementById('my-coin-display').innerText = myCoin;
+            }
+        };
+
+        // 「我的」專區子分頁切換
+        window.showProfileSubTab = function(subTab) {
+            ['profile-menu', 'profile-redeemed', 'profile-sales', 'profile-transactions'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+
+            const target = document.getElementById(`profile-${subTab}`);
+            if (target) target.classList.remove('hidden');
+
+            if (subTab === 'redeemed') {
+                renderMyRedeemedList();
+            } else if (subTab === 'sales') {
+                renderMySalesList();
+            } else if (subTab === 'transactions') {
+                loadTransactions();
             }
         };
 
@@ -88,25 +106,6 @@
                 }
             });
             renderProducts();
-        };
-
-        // 九宮格快捷按鈕點擊事件處理
-        window.handleGridAction = function(actionType) {
-            if (actionType === 'market') {
-                switchTab('market');
-            } else if (actionType === 'upload') {
-                switchTab('upload');
-            } else if (actionType === 'coin') {
-                switchTab('coin');
-            } else if (actionType === 'profile') {
-                switchTab('profile');
-            } else if (actionType === 'admin') {
-                switchTab('admin');
-            } else if (actionType === 'chat') {
-                switchTab('chat');
-            } else {
-                alert(`點擊了快捷功能：${actionType}`);
-            }
         };
 
         window.handleImageUpload = function(event) {
@@ -300,23 +299,40 @@
                 if (!container) return;
         
                 if (txList.length === 0) {
-                    container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無交易明細</div>`;
+                    container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無收支紀錄</div>`;
                     return;
                 }
         
-                container.innerHTML = txList.map(tx => `
-                    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border text-sm">
-                        <div>
-                            <h4 class="font-bold text-gray-800">${tx.productName}</h4>
-                            <p class="text-xs text-gray-500">買家：${tx.buyer} | 類型：${tx.type === 'redeem' ? '商品兌換' : tx.type}</p>
+                container.innerHTML = txList.map(tx => {
+                    // 轉換台灣時間格式 (YYYY/MM/DD HH:mm)
+                    let timeStr = '剛剛';
+                    if (tx.createdAt && tx.createdAt.toDate) {
+                        const date = tx.createdAt.toDate();
+                        const yyyy = date.getFullYear();
+                        const mm = String(date.getMonth() + 1).padStart(2, '0');
+                        const dd = String(date.getDate()).padStart(2, '0');
+                        const hh = String(date.getHours()).padStart(2, '0');
+                        const min = String(date.getMinutes()).padStart(2, '0');
+                        timeStr = `${yyyy}/${mm}/${dd} ${hh}:${min}`;
+                    }
+                    const isPositive = tx.price > 0 || tx.type === 'income' || tx.type === 'refund';
+                    const sign = isPositive ? '+' : '-';
+                    const colorClass = isPositive ? 'text-green-600' : 'text-red-500';
+
+                    return `
+                        <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border text-sm">
+                            <div>
+                                <h4 class="font-bold text-gray-800">${tx.productName || tx.reason || '交易紀錄'}</h4>
+                                <p class="text-xs text-gray-500">時間：${timeStr} | 類型：${tx.type === 'redeem' ? '商品兌換' : (tx.type || '一般')}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="${colorClass} font-bold">${sign}${Math.abs(tx.price)} P</span>
+                            </div>
                         </div>
-                        <div class="text-right">
-                            <span class="text-red-500 font-bold">-${tx.price} P</span>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }  catch (error) {
-                console.error("載入交易明細失敗：", error);
+                console.error("載入收支紀錄失敗：", error);
             }
         }
 
@@ -349,45 +365,49 @@
             `).join('');
         }
 
-        function renderMyProducts() {
-            const container = document.getElementById('my-product-list');
-            const redeemedContainer = document.getElementById('my-redeemed-list');
-
-            const myUploaded = allProducts.filter(p => p.owner === '尊榮豬友 (自己)');
-            if (myUploaded.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-4 text-sm">目前尚無上架紀錄</div>`;
-            } else {
-                container.innerHTML = myUploaded.map(p => `
-                    <div class="bg-gray-50 rounded-xl p-3 border flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <img src="${p.maskedImage}" class="w-12 h-12 object-cover rounded-lg">
-                            <div>
-                                <h4 class="font-bold text-sm text-gray-800">${p.name}</h4>
-                                <p class="text-xs text-gray-500">NT$ ${p.price} | ${p.buyer ? '已售出' : (p.status === 'active' ? '上架中' : '審核中')}</p>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
+        // 禮品區：條列式呈現（不含圖片），點擊後進入詳細資料與圖片
+        function renderMyRedeemedList() {
+            const container = document.getElementById('my-redeemed-list');
             const myRedeemed = allProducts.filter(p => p.buyer === '尊榮豬友 (自己)');
+            
             if (myRedeemed.length === 0) {
-                redeemedContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-4 text-sm">目前尚無已兌換的禮品</div>`;
-            } else {
-                redeemedContainer.innerHTML = myRedeemed.map(p => `
-                    <div class="bg-white rounded-xl shadow-sm border p-4 flex flex-col justify-between">
+                container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無已兌換的禮品</div>`;
+                return;
+            }
+
+            container.innerHTML = myRedeemed.map(p => `
+                <div onclick="openDetailModal('${p.id}')" class="bg-gray-50 hover:bg-orange-50 cursor-pointer p-4 rounded-xl border flex items-center justify-between transition">
+                    <div>
+                        <span class="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-medium">已解鎖序號</span>
+                        <h4 class="font-bold text-gray-800 mt-1">${p.name}</h4>
+                        <p class="text-xs text-gray-500 mt-1">已扣除 ${p.price} 豬幣</p>
+                    </div>
+                    <span class="text-gray-400">&gt;</span>
+                </div>
+            `).join('');
+        }
+
+        // 銷售區：我上架的商品紀錄
+        function renderMySalesList() {
+            const container = document.getElementById('my-sales-list');
+            const myUploaded = allProducts.filter(p => p.owner === '尊榮豬友 (自己)');
+
+            if (myUploaded.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-400 py-4 text-sm">目前尚無上架紀錄</div>`;
+                return;
+            }
+
+            container.innerHTML = myUploaded.map(p => `
+                <div class="bg-gray-50 p-4 rounded-xl border flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <img src="${p.maskedImage}" class="w-12 h-12 object-cover rounded-lg">
                         <div>
-                            <img src="${p.originalImage || p.maskedImage}" alt="${p.name}" class="w-full h-40 object-cover rounded-lg mb-3">
-                            <span class="text-xs bg-green-100 text-green-600 px-2.5 py-1 rounded-full">已解鎖序號</span>
-                            <h3 class="font-bold text-lg mt-2 text-gray-800">${p.name}</h3>
-                            <p class="text-gray-600 text-sm mt-1">${p.description || '無使用說明'}</p>
-                        </div>
-                        <div class="mt-4 text-right">
-                            <span class="text-xs text-gray-400">已扣除 ${p.price} 豬幣</span>
+                            <h4 class="font-bold text-sm text-gray-800">${p.name}</h4>
+                            <p class="text-xs text-gray-500">NT$ ${p.price} | ${p.buyer ? '已售出' : (p.status === 'active' ? '上架中' : '審核中')}</p>
                         </div>
                     </div>
-                `).join('');
-            }
+                </div>
+            `).join('');
         }
 
         window.renderAdminDashboard = function() {
@@ -462,12 +482,12 @@
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
             currentModalProductId = id;
-            document.getElementById('modal-img').src = product.maskedImage;
+            document.getElementById('modal-img').src = product.originalImage || product.maskedImage;
             document.getElementById('modal-category').innerText = product.category;
             document.getElementById('modal-name').innerText = product.name;
             document.getElementById('modal-price').innerText = `NT$ ${product.price}`;
             document.getElementById('modal-desc').innerText = product.description || '無使用說明';
-            document.getElementById('modal-status').innerText = '狀態：上架中';
+            document.getElementById('modal-status').innerText = product.buyer ? '狀態：已解鎖序號' : '狀態：上架中';
             document.getElementById('detail-modal').classList.remove('hidden');
         };
 
@@ -503,12 +523,12 @@
                     type: 'redeem',
                     productId: product.id,
                     productName: product.name,
-                    price: product.price,
+                    price: -product.price,
                     buyer: '尊榮豬友 (自己)',
                     createdAt: serverTimestamp()
                 });
         
-                alert('兌換成功！商品已移至您的「我的禮品區」並解除遮罩，交易明細已同步至雲端。');
+                alert('兌換成功！商品已移至您的「禮品區」並解除遮罩，收支紀錄已同步更新。');
                 window.closeDetailModal();
                 await loadProducts();
                 window.switchTab('profile');
@@ -535,41 +555,11 @@
 
     <main class="max-w-4xl mx-auto p-4 space-y-4">
 
+        <!-- 市集首頁 (已移除快捷鍵按鈕區) -->
         <div id="view-market" class="space-y-4">
             <div class="bg-gradient-to-r from-teal-400 to-teal-500 text-white p-5 rounded-2xl shadow">
                 <h2 class="text-center font-bold text-lg mb-1">小 豬 公 告</h2>
                 <p class="text-xs text-center text-teal-100">請經常在小豬市集交易的豬友們，點擊本公告閱讀管理規範，以保護自身權益。</p>
-            </div>
-
-            <!-- 九宮格 / 十二宮格功能按鈕區 -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm">
-                <h3 class="font-bold text-gray-800 mb-3 text-sm">快捷功能</h3>
-                <div class="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                    <button onclick="handleGridAction('market')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">🏠</span>
-                        <span class="text-xs text-gray-700 font-medium">市集首頁</span>
-                    </button>
-                    <button onclick="handleGridAction('upload')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">🎁</span>
-                        <span class="text-xs text-gray-700 font-medium">商品上架</span>
-                    </button>
-                    <button onclick="handleGridAction('coin')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">ⓟ</span>
-                        <span class="text-xs text-gray-700 font-medium">我的豬幣</span>
-                    </button>
-                    <button onclick="handleGridAction('profile')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">👤</span>
-                        <span class="text-xs text-gray-700 font-medium">個人專區</span>
-                    </button>
-                    <button onclick="handleGridAction('chat')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">💬</span>
-                        <span class="text-xs text-gray-700 font-medium">聊天客服</span>
-                    </button>
-                    <button onclick="handleGridAction('admin')" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-orange-50 rounded-xl transition group">
-                        <span class="text-2xl mb-1 group-hover:scale-110 transition">⚙️</span>
-                        <span class="text-xs text-gray-700 font-medium">管理後臺</span>
-                    </button>
-                </div>
             </div>
 
             <div class="grid grid-cols-4 gap-2">
@@ -656,6 +646,7 @@
             </div>
         </div>
 
+        <!-- 「我的」專區 -->
         <div id="view-profile" class="hidden space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm flex items-center gap-4">
                 <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">豬</div>
@@ -665,19 +656,47 @@
                 </div>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-                <h3 class="font-bold text-gray-800 border-b pb-2">我已兌換的禮品區 (已解鎖序號)</h3>
-                <div id="my-redeemed-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            <!-- 預設顯示的三個主要功能按鈕 -->
+            <div id="profile-menu" class="space-y-3">
+                <button onclick="showProfileSubTab('redeemed')" class="w-full bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between hover:bg-orange-50 transition">
+                    <span class="font-bold text-gray-800 text-base">🎁 禮品區</span>
+                    <span class="text-gray-400">&gt;</span>
+                </button>
+                <button onclick="showProfileSubTab('sales')" class="w-full bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between hover:bg-orange-50 transition">
+                    <span class="font-bold text-gray-800 text-base">🏷️ 銷售區</span>
+                    <span class="text-gray-400">&gt;</span>
+                </button>
+                <button onclick="showProfileSubTab('transactions')" class="w-full bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between hover:bg-orange-50 transition">
+                    <span class="font-bold text-gray-800 text-base">📈 收支紀錄</span>
+                    <span class="text-gray-400">&gt;</span>
+                </button>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-                <h3 class="font-bold text-gray-800 border-b pb-2">金流與交易明細紀錄</h3>
+            <!-- 禮品區子頁面 (條列式，無圖片) -->
+            <div id="profile-redeemed" class="hidden bg-white p-4 rounded-2xl shadow-sm space-y-3">
+                <div class="flex items-center justify-between border-b pb-2">
+                    <h3 class="font-bold text-gray-800">禮品區 (已解鎖序號)</h3>
+                    <button onclick="showProfileSubTab('menu')" class="text-xs text-orange-500 font-medium">返回主選單</button>
+                </div>
+                <div id="my-redeemed-list" class="space-y-2"></div>
+            </div>
+
+            <!-- 銷售區子頁面 -->
+            <div id="profile-sales" class="hidden bg-white p-4 rounded-2xl shadow-sm space-y-3">
+                <div class="flex items-center justify-between border-b pb-2">
+                    <h3 class="font-bold text-gray-800">銷售區 (我上架的商品)</h3>
+                    <button onclick="showProfileSubTab('menu')" class="text-xs text-orange-500 font-medium">返回主選單</button>
+                </div>
+                <div id="my-sales-list" class="space-y-2"></div>
+            </div>
+
+            <!-- 收支紀錄子頁面 (條列式呈現，含原因與台灣時間) -->
+            <div id="profile-transactions" class="hidden bg-white p-4 rounded-2xl shadow-sm space-y-3">
+                <div class="flex items-center justify-between border-b pb-2">
+                    <h3 class="font-bold text-gray-800">收支紀錄 (金流與交易明細)</h3>
+                    <button onclick="showProfileSubTab('menu')" class="text-xs text-orange-500 font-medium">返回主選單</button>
+                </div>
                 <div id="transaction-list" class="space-y-2"></div>
-            </div>
-
-            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-                <h3 class="font-bold text-gray-800 border-b pb-2">我上架的商品紀錄</h3>
-                <div id="my-product-list" class="space-y-2"></div>
             </div>
         </div>
 
@@ -721,6 +740,7 @@
         </button>
     </nav>
 
+    <!-- 點選個別禮品後的詳細資料彈窗（包含圖片） -->
     <div id="detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
             <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
